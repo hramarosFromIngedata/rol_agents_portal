@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingedata - Portail Red-On-Line</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+        :root {
+            --primary-blue: #0056b3;
+            --light-blue: #e6f0fa;
+            --text-light: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --border-color: rgba(255, 255, 255, 0.2);
+            --bg-glass: rgba(255, 255, 255, 0.1);
+            --bg-glass-hover: rgba(255, 255, 255, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-image: url('background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #0044ff;
+            color: var(--text-light);
+            font-family: 'Open Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column; 
+        }
+
+        h1, h2, h3 {
+            font-family: 'Golos Text', sans-serif;
+        }
+
+        h1 {
+            padding: 3rem 0 3rem 0;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            width: 90%;
+            margin: auto;
+            gap: 40px;
+            padding: 40px 0;
+            flex: 1; 
+            align-items: center; 
+        }
+
+        /* ----- Colonne Gauche ----- */
+        .left-column {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo {
+            margin-bottom: 24px;
+        }
+
+        .left-column h1 {
+            font-size: 3.5rem;
+            line-height: 1.1;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .left-column p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            max-width: 90%;
+        }
+
+        /* ----- Colonne Droite (Formulaire) ----- */
+        .right-column {
+            flex: 1;
+            min-width: 350px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .card p.subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        /* Styles des inputs textes, URLs et selects */
+        select, input[type="url"] {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-light);
+            font-family: 'Open Sans', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        select {
+            appearance: none;
+            cursor: pointer;
+        }
+        
+        select option {
+            background: #0033aa;
+            color: white;
+        }
+
+        select:focus, input[type="url"]:focus {
+            border-color: var(--text-light);
+            background: var(--bg-glass-hover);
+        }
+
+        input[type="url"]::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Styles des boutons radio */
+        .radio-group {
+            display: flex;
+            gap: 24px;
+            padding: 10px 0;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-bottom: 0;
+        }
+
+        .radio-group input[type="radio"] {
+            margin-right: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #ffffff;
+        }
+
+        /* Zone de Drag & Drop */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--text-light);
+            background: var(--bg-glass-hover);
+        }
+
+        .drop-zone svg {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 12px;
+            fill: var(--text-muted);
+            transition: fill 0.3s ease;
+        }
+
+        .drop-zone.dragover svg {
+            fill: var(--text-light);
+        }
+
+        .drop-zone p {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .drop-zone span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: bold;
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Bouton de soumission */
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--text-light);
+            color: #002266;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Golos Text', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+
+        .submit-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+            transition: transform 0.3s ease;
+        }
+
+        .submit-btn:hover svg {
+            transform: translateX(4px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Invalid field outline */
+        .invalid-field {
+            box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.18) inset;
+            border-color: #ff4d4d !important;
+        }
+
+        /* Disabled field visual */
+        .disabled-field {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Spinner inside button */
+        .submit-btn .spinner { display: none; align-items: center; margin-right: 8px; }
+        .submit-btn .spinner-svg { width: 20px; height: 20px; display: block; }
+        .submit-btn.sending .spinner { display: inline-flex; }
+        .submit-btn.sending .btn-text { opacity: 0.9; }
+
+        .timer-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .time-box {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 14px 18px;
+            min-width: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .digit-wrapper {
+            overflow: hidden;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .value {
+            font-family: 'Golos Text', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -1px;
+            display: block;
+        }
+
+        .slide-up {
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUp {
+            0% {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.8px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .separator {
+            font-family: 'Golos Text', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            padding-bottom: 6px;
+        }
+
+        /* Toast notifications (inspired by landing/index.html styling) */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 9999;
+            pointer-events: none;
+            align-items: center;
+        }
+
+        .toast {
+            pointer-events: auto;
+            min-width: 260px;
+            max-width: 360px;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            transform: translateY(-8px) scale(.98);
+            transition: opacity 220ms ease, transform 220ms ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .toast--error {
+            border-color: rgba(255,77,77,0.24);
+            background: rgba(255,77,77);
+        }
+
+        .toast--success {
+            border-color: rgba(46,204,113,0.18);
+            background: rgba(46,204,113);
+            color: #e8fff0;
+        }
+
+        .toast__icon { width: 20px; height: 20px; flex: 0 0 20px; }
+        .toast__message { flex: 1; }
+
+        /* ----- Footer ----- */
+        footer {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 20px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            width: 100%;
+        }
+
+        footer .legal-text {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .left-column h1 {
+                font-size: 2.5rem;
+            }
+            .container {
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="left-column">
+            <div class="logo">
+                  <img src="logo.svg" alt="Ingedata Logo" width="65%" />
+            </div>
+            <hr style="border: none; border-radius: 15px; height: 2px; background-color: rgba(255, 255, 255, 0.2); width: 50%;">
+            <h1>ROL - Portail N8N</h1>
+            <div id="processing-timer" class="timer-container" style="margin-top:12px; justify-content: left;">
+                <div class="time-box">
+                    <div class="digit-wrapper">
+                        <span class="value" id="processing-hours">00</span>
+                    </div>
+                    <span class="label">Heures</span>
+                </div>
+                <div class="separator">:</div>
+                <div class="time-box">
+                    <div class="digit-wrapper">
+                        <span class="value" id="processing-minutes">00</span>
+                    </div>
+                    <span class="label">Minutes</span>
+                </div>
+                <div class="separator">:</div>
+                <div class="time-box">
+                    <div class="digit-wrapper">
+                        <span class="value" id="processing-seconds">00</span>
+                    </div>
+                    <span class="label">Secondes</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="card">
+                <h2 style="padding-bottom: 1.5rem;">Informations requises</h2>
+
+                <form action="#" method="POST" enctype="multipart/form-data">
+                    
+                    <div class="form-group">
+                        <label for="url-source">Lien URL</label>
+                        <input type="url" id="url-source" name="url-source" placeholder="https://...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="langue">Langue</label>
+                        <select id="langue" name="langue" required>
+                            <option value="" disabled selected>Sélectionnez une langue...</option>
+                            <option value="francais">Français</option>
+                            <option value="anglais">Anglais</option>
+                            <option value="chinois">Chinois</option>
+                            <option value="allemand">Allemand</option>
+                            <option value="espagnol">Espagnol</option>
+                            <option value="russe">Russe</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="code">Matricule</label>
+                        <select id="code" name="code" required>
+                            <option value="" disabled selected>Sélectionnez votre matricule...</option>
+                            <option value="101458">101458</option>
+                            <option value="101459">101459</option>
+                            <option value="101460">101460</option>
+                            <option value="101461">101461</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Catégorie</label>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" name="categorie" value="RG" required>
+                                RG
+                            </label>
+                            <label>
+                                <input type="radio" name="categorie" value="PS" required>
+                                PS
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Document</label>
+                        <div class="drop-zone" id="drop-zone">
+                            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                            <p id="file-name">Glissez-déposez le document ici ou cliquez</p>
+                            <span>Format accepté : PDF uniquement</span>
+                            <input type="file" id="file-upload" name="document_pdf" accept=".pdf">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <span class="btn-text">Traiter</span>
+                        <span class="spinner" aria-hidden="true">
+                            <!-- inlined spinner SVG from /home/ramaros/Documents/RH-QR-PORTAL/landing/gear-spinner-blue.svg -->
+                            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' class="spinner-svg"><path fill='#0044FF' stroke='#0044FF' stroke-width='15' transform-origin='center' d='m148 84.7 13.8-8-10-17.3-13.8 8a50 50 0 0 0-27.4-15.9v-16h-20v16A50 50 0 0 0 63 67.4l-13.8-8-10 17.3 13.8 8a50 50 0 0 0 0 31.7l-13.8 8 10 17.3 13.8-8a50 50 0 0 0 27.5 15.9v16h20v-16a50 50 0 0 0 27.4-15.9l13.8 8 10-17.3-13.8-8a50 50 0 0 0 0-31.7Zm-47.5 50.8a35 35 0 1 1 0-70 35 35 0 0 1 0 70Z'><animateTransform type='rotate' attributeName='transform' calcMode='spline' dur='2' values='0;120' keyTimes='0;1' keySplines='0 0 1 1' repeatCount='indefinite'></animateTransform></path></svg>
+                        </span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="legal-text">
+            INGEDATA Sarl &bull; 2ème étage, Immeuble RAYIM, Rue Ravoninahitriniarivo, Ankorondrano <br>
+            NIF : 3000046612 &ndash; Stat : 62011 11 2005 0 10293 &ndash; RCS : 2005B00507
+        </div>
+    </footer>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-upload');
+        const fileNameDisplay = document.getElementById('file-name');
+        const form = document.querySelector('form');
+        const urlInput = document.getElementById('url-source');
+        // URL validation regex fourni par l'utilisateur
+        const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // helper to mark/clear invalid states
+        function markInvalid(el) {
+            if (!el) return;
+            el.classList.add('invalid-field');
+        }
+
+        function clearInvalid(el) {
+            if (!el) return;
+            el.classList.remove('invalid-field');
+        }
+
+        // Handle files dropped into the drop zone
+        dropZone.addEventListener('drop', function(e) {
+            preventDefaults(e);
+            const dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length > 0) {
+                const file = dt.files[0];
+                if (!file.name.toLowerCase().endsWith('.pdf')) {
+                    // mark drop zone invalid
+                    markInvalid(dropZone);
+                    fileInput.value = '';
+                    validateForm();
+                    return;
+                }
+                try {
+                    // Try to assign the dropped files to the file input
+                    fileInput.files = dt.files;
+                } catch (err) {
+                    // Some browsers restrict setting file inputs programmatically.
+                }
+                const event = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(event);
+            }
+        });
+
+        // Met à jour le texte avec le nom du fichier PDF sélectionné
+        fileInput.addEventListener('change', function() {
+            clearInvalid(dropZone);
+            if (this.files && this.files.length > 0) {
+                // Vérification de sécurité supplémentaire côté JS (optionnel)
+                const fileName = this.files[0].name;
+                if (!fileName.toLowerCase().endsWith('.pdf')) {
+                    markInvalid(dropZone);
+                    this.value = ''; // Réinitialise l'input
+                    fileNameDisplay.textContent = "Glissez-déposez le document ici ou cliquez";
+                    fileNameDisplay.style.fontWeight = "normal";
+                    validateForm();
+                    return;
+                }
+                fileNameDisplay.textContent = "Fichier sélectionné : " + fileName;
+                fileNameDisplay.style.fontWeight = "bold";
+            } else {
+                fileNameDisplay.textContent = "Glissez-déposez le document ici ou cliquez";
+                fileNameDisplay.style.fontWeight = "normal";
+            }
+            validateForm();
+        });
+
+        const submitBtn = document.querySelector('.submit-btn');
+        const btnTextEl = document.querySelector('.btn-text');
+        const originalBtnText = btnTextEl ? btnTextEl.textContent : 'Valider l\'envoi';
+        const processingHoursEl = document.getElementById('processing-hours');
+        const processingMinutesEl = document.getElementById('processing-minutes');
+        const processingSecondsEl = document.getElementById('processing-seconds');
+        let timerInterval = null;
+        let timerStart = null;
+        let processId = null;
+        let pollInterval = null;
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            return { hours, minutes, seconds };
+        }
+
+        function updateTimerDigits(hours, minutes, seconds) {
+            if (!processingHoursEl || !processingMinutesEl || !processingSecondsEl) return;
+            if (processingHoursEl.textContent !== hours) {
+                processingHoursEl.classList.remove('slide-up');
+                void processingHoursEl.offsetWidth;
+                processingHoursEl.textContent = hours;
+                processingHoursEl.classList.add('slide-up');
+            }
+            if (processingMinutesEl.textContent !== minutes) {
+                processingMinutesEl.classList.remove('slide-up');
+                void processingMinutesEl.offsetWidth;
+                processingMinutesEl.textContent = minutes;
+                processingMinutesEl.classList.add('slide-up');
+            }
+            if (processingSecondsEl.textContent !== seconds) {
+                processingSecondsEl.classList.remove('slide-up');
+                void processingSecondsEl.offsetWidth;
+                processingSecondsEl.textContent = seconds;
+                processingSecondsEl.classList.add('slide-up');
+            }
+        }
+
+        function startTimer() {
+            if (!processingHoursEl || !processingMinutesEl || !processingSecondsEl) return;
+            timerStart = Date.now();
+            updateTimerDigits('00', '00', '00');
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - timerStart;
+                const { hours, minutes, seconds } = formatTime(elapsed);
+                updateTimerDigits(hours, minutes, seconds);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            if (processingHoursEl) processingHoursEl.textContent = '00';
+            if (processingMinutesEl) processingMinutesEl.textContent = '00';
+            if (processingSecondsEl) processingSecondsEl.textContent = '00';
+            timerStart = null;
+        }
+
+        function validateRequiredFields() {
+            let valid = true;
+
+            // Validate selects with required
+            const selects = form.querySelectorAll('select[required]');
+            selects.forEach(s => {
+                if (!s.value) {
+                    markInvalid(s);
+                    valid = false;
+                } else {
+                    clearInvalid(s);
+                }
+            });
+
+            // Validate radio group 'categorie'
+            const radios = form.querySelectorAll('input[name="categorie"]');
+            const anyChecked = Array.from(radios).some(r => r.checked);
+            const radioContainer = radios.length ? radios[0].closest('.radio-group') : null;
+            if (!anyChecked) {
+                markInvalid(radioContainer);
+                valid = false;
+            } else {
+                clearInvalid(radioContainer);
+            }
+
+            return valid;
+        }
+
+        function validateForm() {
+            // Clear URL/file invalid visuals initially
+            clearInvalid(urlInput);
+            clearInvalid(dropZone);
+
+            let formValid = validateRequiredFields();
+
+            const urlValue = urlInput.value.trim();
+            const hasFile = fileInput.files && fileInput.files.length > 0;
+
+            // At least one of URL or file must be present
+            if (!urlValue && !hasFile) {
+                markInvalid(urlInput);
+                markInvalid(dropZone);
+                formValid = false;
+            } else {
+                // If URL present, validate its pattern via browser
+                if (urlValue) {
+                    if (!urlRegex.test(urlValue)) {
+                        markInvalid(urlInput);
+                        formValid = false;
+                    } else {
+                        clearInvalid(urlInput);
+                    }
+                }
+                // If file present, ensure PDF
+                if (hasFile) {
+                    const fname = fileInput.files[0].name || '';
+                    if (!fname.toLowerCase().endsWith('.pdf')) {
+                        markInvalid(dropZone);
+                        formValid = false;
+                    } else {
+                        clearInvalid(dropZone);
+                    }
+                }
+            }
+
+            submitBtn.disabled = !formValid;
+            return formValid;
+        }
+
+        // Wire up events to revalidate on user input
+        urlInput.addEventListener('input', validateForm);
+        form.querySelectorAll('select, input').forEach(el => el.addEventListener('change', validateForm));
+        form.querySelectorAll('input[type="radio"]').forEach(r => r.addEventListener('change', validateForm));
+
+        // Mutual exclusivity: if URL present (and valid) disable file input; if file selected disable URL input
+        function toggleMutualExclusion() {
+            const urlValue = urlInput.value.trim();
+            const hasFile = fileInput.files && fileInput.files.length > 0;
+
+            // If URL present and matches regex, disable file selection
+            if (urlValue && urlRegex.test(urlValue)) {
+                fileInput.disabled = true;
+                dropZone.classList.add('disabled-field');
+                // clear any previously selected file
+                if (hasFile) {
+                    fileInput.value = '';
+                    fileNameDisplay.textContent = "Glissez-déposez le document ici ou cliquez";
+                    fileNameDisplay.style.fontWeight = "normal";
+                }
+            } else {
+                fileInput.disabled = false;
+                dropZone.classList.remove('disabled-field');
+            }
+
+            // If a file is selected, disable the URL input
+            if (hasFile) {
+                urlInput.disabled = true;
+                urlInput.classList.add('disabled-field');
+            } else {
+                urlInput.disabled = false;
+                urlInput.classList.remove('disabled-field');
+            }
+        }
+
+        // listen for changes to enforce mutual exclusion
+        urlInput.addEventListener('input', function() { toggleMutualExclusion(); validateForm(); });
+        fileInput.addEventListener('change', function() { toggleMutualExclusion(); validateForm(); });
+
+        // Initial state: disable submit until valid
+        submitBtn.disabled = true;
+
+        // Final submit handling: send via fetch to webhook
+        const WEBHOOK_URL = 'https://automate.ingedata.ai/webhook-test/rol-portal';
+
+        function setSendingState(isSending) {
+            if (isSending) {
+                submitBtn.classList.add('sending');
+                // set button to act as "Arrêter le traitement"
+                if (btnTextEl) btnTextEl.textContent = 'Arrêter le traitement';
+                // disable all form controls except the submit button so user can request stop
+                form.querySelectorAll('input, select, button').forEach(el => { if (el !== submitBtn) el.disabled = true; });
+                submitBtn.disabled = false;
+                // start timer shown under title
+                startTimer();
+            } else {
+                submitBtn.classList.remove('sending');
+                // stop timer and restore text
+                stopTimer();
+                // re-enable form controls
+                form.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+                // restore button text
+                if (btnTextEl) btnTextEl.textContent = originalBtnText;
+                // ensure validation state updates button
+                validateForm();
+            }
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (submitBtn.classList.contains('sending')) {
+                // If already sending, prevent duplicate submissions
+                return;
+            }
+            if (!validateForm()) return;
+
+            // Build FormData
+            const data = new FormData(form);
+
+            setSendingState(true);
+
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                body: data,
+            }).then(async (res) => {
+                if (!res.ok) {
+                    setSendingState(false);
+                    // show toast error
+                    showToast('Erreur serveur : ' + res.status + ' ' + res.statusText, 'error');
+                    markInvalid(submitBtn);
+                    setTimeout(() => clearInvalid(submitBtn), 3000);
+                    return;
+                }
+
+                // Try to parse JSON response
+                let json = null;
+                try { json = await res.json(); } catch (e) { json = null; }
+
+                // If server indicates processing (202), keep process_id and poll for updates
+                if (Array.isArray(json) && json.length > 0 && json[0].code === 202 && json[0].status === 'processing') {
+                    processId = json[0].process_id || null;
+                    showToast('Traitement en cours (process_id: ' + (processId || 'n/a') + ')', 'success');
+                    // keep sending state (timer running) and start polling
+                    startPolling();
+                    return;
+                }
+
+                // For other successful immediate responses, treat as completed
+                setSendingState(false);
+                const originalText = document.querySelector('.btn-text').textContent;
+                document.querySelector('.btn-text').textContent = 'Envoyé';
+                setTimeout(() => {
+                    document.querySelector('.btn-text').textContent = originalText;
+                }, 2500);
+                // Optionally reset form
+                form.reset();
+                fileNameDisplay.textContent = "Glissez-déposez le document ici ou cliquez";
+                fileNameDisplay.style.fontWeight = "normal";
+                showToast('Données envoyées avec succès.', 'success');
+                validateForm();
+            }).catch(err => {
+                setSendingState(false);
+                showToast('Erreur réseau : impossible d\'atteindre le serveur.', 'error');
+                markInvalid(submitBtn);
+                setTimeout(() => clearInvalid(submitBtn), 3000);
+            });
+        });
+
+        // If user clicks the submit button while sending, ask to stop
+        submitBtn.addEventListener('click', function(e) {
+            if (!submitBtn.classList.contains('sending')) return; // only act when sending
+            e.preventDefault();
+            const confirmed = confirm('Voulez-vous vraiment arrêter le traitement ?');
+            if (!confirmed) return;
+            // send stop request using processId and API key if available
+            if (!processId) {
+                showToast('Aucun process_id disponible pour arrêter le traitement.', 'error');
+                return;
+            }
+
+            // prefer using n8n API stop endpoint which requires API key
+            const apiKey = window.N8N_API_KEY || null;
+            if (!apiKey) {
+                showToast('Clé API manquante (window.N8N_API_KEY). Impossible d\'envoyer la requête d\'arrêt.', 'error');
+                return;
+            }
+
+            const stopUrl = `https://automate.ingedata.ai/api/v1/executions/${processId}/stop`;
+            // optimistic UI: stop local sending state while request goes out
+            setSendingState(false);
+            fetch(stopUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain', 'X-N8N-API-KEY': apiKey }, body: 'stop' })
+                .then(res => {
+                    if (!res.ok) {
+                        showToast('Impossible d\'arrêter le traitement (serveur).', 'error');
+                        return;
+                    }
+                    showToast('Traitement arrêté.', 'success');
+                    // stop polling if any
+                    stopPolling();
+                }).catch(() => {
+                    showToast('Erreur réseau lors de la demande d\'arrêt.', 'error');
+                });
+        });
+
+        // Toast utility
+        const toastContainer = document.getElementById('toast-container');
+        function showToast(message, type = 'error', duration = 5000) {
+            if (!toastContainer) return;
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type === 'success' ? 'toast--success' : 'toast--error');
+            const icon = document.createElement('div');
+            icon.className = 'toast__icon';
+            // simple SVG icons
+            if (type === 'success') {
+                icon.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2ecc71" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
+            } else {
+                icon.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ff4d4d" stroke-width="2"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>';
+            }
+            const msg = document.createElement('div');
+            msg.className = 'toast__message';
+            msg.textContent = message;
+            t.appendChild(icon);
+            t.appendChild(msg);
+            toastContainer.appendChild(t);
+            // show
+            requestAnimationFrame(() => t.classList.add('show'));
+            // auto remove
+            const to = setTimeout(() => {
+                t.classList.remove('show');
+                setTimeout(() => t.remove(), 250);
+            }, duration);
+
+            // allow manual dismiss on click
+            t.addEventListener('click', () => {
+                clearTimeout(to);
+                t.classList.remove('show');
+                setTimeout(() => t.remove(), 200);
+            });
+        }
+
+        // Polling utilities for checking processing status
+        function startPolling() {
+            // avoid double polling
+            if (pollInterval) return;
+            // poll every 3 seconds
+                    pollInterval = setInterval(async () => {
+                        if (!processId) return;
+                        const apiKey = window.N8N_API_KEY || null;
+                        try {
+                            let st = null;
+                            if (apiKey) {
+                                const statusUrl = `https://automate.ingedata.ai/api/v1/executions/${encodeURIComponent(processId)}`;
+                                const r = await fetch(statusUrl, { headers: { 'X-N8N-API-KEY': apiKey } });
+                                if (!r.ok) {
+                                    console.warn('n8n status fetch failed', r.status);
+                                    return;
+                                }
+                                const statusResp = await r.json();
+                                st = statusResp && statusResp.status;
+                            } else {
+                                // fallback: try a GET to the webhook with process_id (best-effort)
+                                try {
+                                    const r = await fetch(WEBHOOK_URL + '?process_id=' + encodeURIComponent(processId));
+                                    if (!r.ok) return;
+                                    const j = await r.json();
+                                    if (Array.isArray(j) && j.length > 0) {
+                                        st = j[0].status || null;
+                                    } else if (j && j.status) {
+                                        st = j.status;
+                                    }
+                                } catch (err) {
+                                    console.warn('Polling fallback failed', err);
+                                    return;
+                                }
+                            }
+
+                            if (!st) return;
+
+                            // Normalize known terminal states
+                            const runningStates = ['new', 'running', 'waiting'];
+                            const successStates = ['success', 'completed', 'finished'];
+
+                            if (runningStates.includes(st)) {
+                                // still processing: nothing to do
+                                return;
+                            }
+
+                            if (successStates.includes(st)) {
+                                showToast('Traitement terminé avec succès.', 'success');
+                            } else if (st === 'error') {
+                                showToast('Le traitement a échoué.', 'error');
+                            } else if (st === 'canceled') {
+                                showToast('Le traitement a été annulé.', 'error');
+                            } else if (st === 'crashed') {
+                                showToast('Le traitement s\'est interrompu de façon inattendue.', 'error');
+                            } else {
+                                showToast('Statut final: ' + st, 'error');
+                            }
+
+                            // terminal -> stop polling and restore UI
+                            stopPolling();
+                            setSendingState(false);
+                        } catch (err) {
+                            console.error('Polling error', err);
+                        }
+                    }, 3000);
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+            processId = null;
+        }
+    </script>
+</body>
+</html>
