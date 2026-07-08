@@ -72,6 +72,7 @@ export default function PortalForm() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toastIdRef = useRef(0);
+  const timerStartRef = useRef<number | null>(null);
 
   const trimmedUrl = urlSource.trim();
   const hasFile = !!file;
@@ -100,11 +101,16 @@ export default function PortalForm() {
   const urlInputDisabled = hasFile;
   const submitDisabled = sendingState === "sending" ? false : !isFormValid;
 
-  // Processing timer.
+  // Processing timer. The start reference lives in a ref (not state) so the
+  // refresh button can rebase it without tearing down/restarting the interval.
   useEffect(() => {
     if (sendingState !== "sending") return;
-    const start = Date.now();
-    const id = setInterval(() => setElapsedMs(Date.now() - start), 1000);
+    timerStartRef.current = Date.now();
+    const id = setInterval(() => {
+      if (timerStartRef.current != null) {
+        setElapsedMs(Date.now() - timerStartRef.current);
+      }
+    }, 1000);
     return () => clearInterval(id);
   }, [sendingState]);
 
@@ -177,14 +183,21 @@ export default function PortalForm() {
     setTouched({ langue: false, code: false, categorie: false, url: false, file: false });
   }
 
-  function startSending() {
+  function resetTimer() {
+    timerStartRef.current = Date.now();
     setElapsedMs(0);
+  }
+
+  function startSending() {
+    resetTimer();
     setSendingState("sending");
   }
 
   function stopSending() {
+    // Stops the timer but deliberately leaves the elapsed value on screen
+    // (success and error included) — it only resets via the refresh button
+    // or the next "Traiter" launch.
     setSendingState("idle");
-    setElapsedMs(0);
   }
 
   function stopPolling() {
@@ -377,6 +390,19 @@ export default function PortalForm() {
                 Secondes
               </span>
             </div>
+
+            <button
+              type="button"
+              onClick={resetTimer}
+              title="Réinitialiser le chronomètre"
+              aria-label="Réinitialiser le chronomètre"
+              className="ml-2 flex h-10 w-10 flex-none items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 transition-colors duration-300 hover:bg-white/15 hover:text-white"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                <path d="M12,2a10.032,10.032,0,0,1,7.122,3H16a1,1,0,0,0-1,1h0a1,1,0,0,0,1,1h4.143A1.858,1.858,0,0,0,22,5.143V1a1,1,0,0,0-1-1h0a1,1,0,0,0-1,1V3.078A11.981,11.981,0,0,0,.05,10.9a1.007,1.007,0,0,0,1,1.1h0a.982.982,0,0,0,.989-.878A10.014,10.014,0,0,1,12,2Z" />
+                <path d="M22.951,12a.982.982,0,0,0-.989.878A9.986,9.986,0,0,1,4.878,19H8a1,1,0,0,0,1-1H9a1,1,0,0,0-1-1H3.857A1.856,1.856,0,0,0,2,18.857V23a1,1,0,0,0,1,1H3a1,1,0,0,0,1-1V20.922A11.981,11.981,0,0,0,23.95,13.1a1.007,1.007,0,0,0-1-1.1Z" />
+              </svg>
+            </button>
           </div>
         </div>
 
