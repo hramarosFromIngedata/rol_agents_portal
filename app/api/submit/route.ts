@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
 
-  const res = await fetch(`${host}/webhook-test/rol-portal`, {
+  const res = await fetch(`${host}/webhook/rol-portal`, {
     method: "POST",
     body: formData,
   });
