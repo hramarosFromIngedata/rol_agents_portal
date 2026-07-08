@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import ToastContainer, { ToastItem } from "./Toast";
 import ConfirmDialog from "./ConfirmDialog";
 
-const WEBHOOK_URL = "https://automate.ingedata.ai/webhook-test/rol-portal";
+const SUBMIT_URL = "/api/submit";
 const URL_REGEX = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
 
 // Real n8n execution statuses: new/running/waiting are in-flight, success is
@@ -250,7 +250,7 @@ export default function PortalForm() {
     startSending();
 
     try {
-      const res = await fetch(WEBHOOK_URL, { method: "POST", body: data });
+      const res = await fetch(SUBMIT_URL, { method: "POST", body: data });
 
       if (!res.ok) {
         stopSending();

@@ -5,9 +5,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const apiKey = process.env.N8N_API_KEY;
-  if (!apiKey) {
+  const host = process.env.N8N_HOST;
+  if (!apiKey || !host) {
     return NextResponse.json(
-      { error: "N8N_API_KEY is not configured on the server." },
+      { error: "N8N_API_KEY / N8N_HOST is not configured on the server." },
       { status: 500 }
     );
   }
@@ -15,7 +16,7 @@ export async function GET(
   const { id } = await params;
 
   const res = await fetch(
-    `https://automate.ingedata.ai/api/v1/executions/${encodeURIComponent(id)}`,
+    `${host}/api/v1/executions/${encodeURIComponent(id)}`,
     { headers: { "X-N8N-API-KEY": apiKey } }
   );
 
