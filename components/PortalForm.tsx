@@ -225,6 +225,9 @@ export default function PortalForm() {
           showToast("Traitement terminé avec succès.", "success");
           stopPolling();
           stopSending();
+          fetch(`/api/executions/${encodeURIComponent(pid)}/report`).catch((err) => {
+            console.error(`[n8n] Échec de la récupération du rapport pour l'exécution ${pid} :`, err);
+          });
           return;
         }
 

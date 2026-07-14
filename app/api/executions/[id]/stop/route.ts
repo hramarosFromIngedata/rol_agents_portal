@@ -1,68 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-type ExecutionRunEntry = {
-  metadata?: {
-    subExecution?: {
-      executionId?: string;
-    };
-  };
-};
-
-type ExecutionRunData = Record<string, ExecutionRunEntry[]>;
-
-// Fetches an execution's node run data so we can look for
-// n8n-nodes-base.executeWorkflow calls, which record the child execution's
-// id under runData[nodeName][i].metadata.subExecution.executionId.
-async function fetchExecutionRunData(
-  host: string,
-  apiKey: string,
-  executionId: string
-): Promise<ExecutionRunData | null> {
-  const res = await fetch(
-    `${host}/api/v1/executions/${encodeURIComponent(executionId)}?includeData=true`,
-    { headers: { "X-N8N-API-KEY": apiKey } }
-  );
-  if (!res.ok) return null;
-
-  const data = (await res.json()) as {
-    data?: { resultData?: { runData?: unknown } };
-  };
-  const runData = data?.data?.resultData?.runData;
-  if (!runData || typeof runData !== "object") return null;
-
-  return runData as ExecutionRunData;
-}
-
-// Recursively walks the execution tree (sub-workflows can themselves call
-// further sub-workflows) and returns every descendant execution id, deepest
-// first, so callers can stop them before the parent that spawned them.
-async function findDescendantExecutionIds(
-  host: string,
-  apiKey: string,
-  executionId: string,
-  visited: Set<string>
-): Promise<string[]> {
-  if (visited.has(executionId)) return [];
-  visited.add(executionId);
-
-  const runData = await fetchExecutionRunData(host, apiKey, executionId);
-  if (!runData) return [];
-
-  const directChildren = new Set<string>();
-  for (const runs of Object.values(runData)) {
-    for (const run of runs) {
-      const childId = run?.metadata?.subExecution?.executionId;
-      if (childId && !visited.has(childId)) directChildren.add(childId);
-    }
-  }
-
-  const descendants: string[] = [];
-  for (const childId of directChildren) {
-    const grandChildren = await findDescendantExecutionIds(host, apiKey, childId, visited);
-    descendants.push(...grandChildren, childId);
-  }
-  return descendants;
-}
+import { fetchExecutionTree } from "@/lib/n8n";
 
 export async function POST(
   _request: NextRequest,
@@ -81,7 +18,8 @@ export async function POST(
 
   let childIds: string[] = [];
   try {
-    childIds = await findDescendantExecutionIds(host, apiKey, id, new Set());
+    const tree = await fetchExecutionTree(host, apiKey, id);
+    childIds = tree.filter((execution) => execution.id !== id).map((execution) => execution.id);
   } catch (err) {
     console.error(`[n8n] Impossible de résoudre les sous-exécutions de ${id} :`, err);
   }
