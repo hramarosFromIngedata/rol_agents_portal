@@ -269,11 +269,11 @@ export default function PortalForm() {
     if (!isFormValid) return;
 
     const data = new FormData();
-    if (trimmedUrl) data.append("url-source", trimmedUrl);
+    data.append("url-source", trimmedUrl);
     data.append("langue", langue);
     data.append("code", code);
     data.append("categorie", categorie);
-    if (file) data.append("document_pdf", file);
+    data.append("document_pdf", file ?? "");
 
     startSending();
 
