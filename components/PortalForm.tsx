@@ -53,6 +53,7 @@ export default function PortalForm() {
   const [code, setCode] = useState("");
   const [categorie, setCategorie] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [agentOptions, setAgentOptions] = useState<number[]>([]);
   const [fileFormatError, setFileFormatError] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [touched, setTouched] = useState<Touched>({
@@ -118,6 +119,25 @@ export default function PortalForm() {
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  // Matricules are fetched fresh on every render of the page (mount) rather
+  // than hardcoded, so the dropdown always reflects the current agent list.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/agents")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { matricules?: unknown } | null) => {
+        if (cancelled || !json) return;
+        const list = Array.isArray(json.matricules)
+          ? json.matricules.filter((m): m is number => typeof m === "number")
+          : [];
+        setAgentOptions(list);
+      })
+      .catch((err) => console.error("[n8n] Échec de la récupération de la liste des agents :", err));
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -500,10 +520,11 @@ export default function PortalForm() {
                   <option value="" disabled>
                     Sélectionnez votre matricule...
                   </option>
-                  <option value="101458">101458</option>
-                  <option value="101459">101459</option>
-                  <option value="101460">101460</option>
-                  <option value="101461">101461</option>
+                  {agentOptions.map((matricule) => (
+                    <option key={matricule} value={matricule}>
+                      {matricule}
+                    </option>
+                  ))}
                 </select>
               </div>
 
