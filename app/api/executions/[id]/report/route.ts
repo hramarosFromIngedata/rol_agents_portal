@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildExecutionReport } from "@/lib/n8n-report";
 import { postJsonWithRetry } from "@/lib/webhook-retry";
+import { webhookUrl } from "@/lib/webhooks";
 
 export async function GET(
   _request: NextRequest,
@@ -29,9 +30,9 @@ export async function GET(
     return NextResponse.json({ error: `Execution ${id} not found.` }, { status: 404 });
   }
 
-  // Fire-and-forget: don't block the response on the store webhook, it
-  // retries indefinitely with backoff in the background until it succeeds.
-  postJsonWithRetry(`${host}/webhook/rol-store-meta-data`, report, `rol-store-meta-data:${id}`);
+  // Fire-and-forget: don't block the response on the store webhook. Retries
+  // with backoff in the background, up to MAX_ATTEMPTS (see webhook-retry.ts).
+  postJsonWithRetry(webhookUrl(host, "rolStoreMetaData"), report, "rol-store-meta-data:" + id);
 
   return NextResponse.json(report);
 }

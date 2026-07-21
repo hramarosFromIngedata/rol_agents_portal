@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { webhookUrl } from "@/lib/webhooks";
 
 export async function POST(request: NextRequest) {
   const host = process.env.N8N_HOST;
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
 
-  const res = await fetch(`${host}/webhook/rol-portal`, {
+  const res = await fetch(webhookUrl(host, "rolPortal"), {
     method: "POST",
     body: formData,
   });

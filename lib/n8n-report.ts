@@ -1,4 +1,5 @@
 import { N8nExecution, N8nRunItem, fetchExecutionTree } from "@/lib/n8n";
+import { webhookUrl } from "@/lib/webhooks";
 
 type TokenUsage = {
   completionTokens: number;
@@ -209,7 +210,7 @@ function round5(value: number): number {
 async function priceOcrUsage(host: string, pagesProcessed: number | null): Promise<number | null> {
   if (pagesProcessed == null) return null;
 
-  const res = await fetch(`${host}/webhook/mistral-price`);
+  const res = await fetch(webhookUrl(host, "mistralPrice"));
   if (!res.ok) return null;
 
   const json = (await res.json()) as { price?: { cost?: number; perPage?: number } };
@@ -230,7 +231,7 @@ async function priceAiUsage(
 ): Promise<{ completionCost: number | null; promptCost: number | null; totalCost: number | null } | null> {
   if (entries.length === 0) return null;
 
-  const res = await fetch(`${host}/webhook/openrouter-price`);
+  const res = await fetch(webhookUrl(host, "openrouterPrice"));
   if (!res.ok) return null;
 
   const json = (await res.json()) as {
