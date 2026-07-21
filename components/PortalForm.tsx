@@ -213,6 +213,18 @@ export default function PortalForm() {
     pollRef.current = setInterval(async () => {
       try {
         const r = await fetch(`/api/executions/${encodeURIComponent(pid)}/status`);
+
+        // 404 means the execution doesn't exist (bad id, deleted, ...) and
+        // never will — retrying won't help, so abandon this task immediately
+        // instead of polling forever every 3s.
+        if (r.status === 404) {
+          console.error(`[n8n] Exécution ${pid} introuvable (HTTP 404) : abandon du suivi.`);
+          showToast("Exécution introuvable (404) : abandon du suivi.", "error");
+          stopPolling();
+          stopSending();
+          return;
+        }
+
         if (!r.ok) return;
         const j = await r.json();
         const st: string | null = j?.status ?? null;
