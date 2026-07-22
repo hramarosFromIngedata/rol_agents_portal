@@ -6,7 +6,7 @@ const WEBHOOK_PATHS = {
   mistralPrice: process.env.N8N_WEBHOOK_MISTRAL_PRICE || "mistral-price",
   openrouterPrice: process.env.N8N_WEBHOOK_OPENROUTER_PRICE || "openrouter-price",
   rolStoreMetaData: process.env.N8N_WEBHOOK_ROL_STORE_META_DATA || "rol-store-meta-data",
-  fetchAgentsList: process.env.N8N_WEBHOOK_FETCH_AGENTS_LIST || "fetch-agents-list",
+  fetchFormData: process.env.N8N_WEBHOOK_FETCH_FORM_DATA || "fetch-form-data",
 } as const;
 
 export type WebhookName = keyof typeof WEBHOOK_PATHS;

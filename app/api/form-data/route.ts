@@ -12,23 +12,26 @@ export async function GET() {
 
   let res: Response;
   try {
-    res = await fetch(webhookUrl(host, "fetchAgentsList"));
+    res = await fetch(webhookUrl(host, "fetchFormData"));
   } catch (err) {
-    console.error("[n8n] Échec de la récupération de la liste des agents :", err);
-    return NextResponse.json({ error: "Failed to fetch agents list." }, { status: 502 });
+    console.error("[n8n] Échec de la récupération des données du formulaire :", err);
+    return NextResponse.json({ error: "Failed to fetch form data." }, { status: 502 });
   }
 
   if (!res.ok) {
     return NextResponse.json(
-      { error: `fetch-agents-list failed with ${res.status}` },
+      { error: `fetch-form-data failed with ${res.status}` },
       { status: res.status }
     );
   }
 
-  const json = (await res.json()) as { matricules?: unknown }[] | null;
+  const json = (await res.json()) as { matricules?: unknown; langues?: unknown }[] | null;
   const matricules = Array.isArray(json)
     ? json.flatMap((entry) => (Array.isArray(entry?.matricules) ? entry.matricules : []))
     : [];
+  const langues = Array.isArray(json)
+    ? json.flatMap((entry) => (Array.isArray(entry?.langues) ? entry.langues : []))
+    : [];
 
-  return NextResponse.json({ matricules });
+  return NextResponse.json({ matricules, langues });
 }

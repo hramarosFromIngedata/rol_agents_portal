@@ -54,6 +54,7 @@ export default function PortalForm() {
   const [categorie, setCategorie] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [agentOptions, setAgentOptions] = useState<number[]>([]);
+  const [langueOptions, setLangueOptions] = useState<string[]>([]);
   const [fileFormatError, setFileFormatError] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [touched, setTouched] = useState<Touched>({
@@ -122,20 +123,25 @@ export default function PortalForm() {
     };
   }, []);
 
-  // Matricules are fetched fresh on every render of the page (mount) rather
-  // than hardcoded, so the dropdown always reflects the current agent list.
+  // Matricules and langues are fetched fresh on every render of the page
+  // (mount) rather than hardcoded, so both dropdowns always reflect the
+  // current form data.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/agents")
+    fetch("/api/form-data")
       .then((res) => (res.ok ? res.json() : null))
-      .then((json: { matricules?: unknown } | null) => {
+      .then((json: { matricules?: unknown; langues?: unknown } | null) => {
         if (cancelled || !json) return;
-        const list = Array.isArray(json.matricules)
+        const matricules = Array.isArray(json.matricules)
           ? json.matricules.filter((m): m is number => typeof m === "number")
           : [];
-        setAgentOptions(list);
+        const langues = Array.isArray(json.langues)
+          ? json.langues.filter((l): l is string => typeof l === "string")
+          : [];
+        setAgentOptions(matricules);
+        setLangueOptions(langues);
       })
-      .catch((err) => console.error("[n8n] Échec de la récupération de la liste des agents :", err));
+      .catch((err) => console.error("[n8n] Échec de la récupération des données du formulaire :", err));
     return () => {
       cancelled = true;
     };
@@ -492,12 +498,11 @@ export default function PortalForm() {
                   <option value="" disabled>
                     Sélectionnez une langue...
                   </option>
-                  <option value="francais">Français</option>
-                  <option value="anglais">Anglais</option>
-                  <option value="chinois">Chinois</option>
-                  <option value="allemand">Allemand</option>
-                  <option value="espagnol">Espagnol</option>
-                  <option value="russe">Russe</option>
+                  {langueOptions.map((langueOption) => (
+                    <option key={langueOption} value={langueOption}>
+                      {langueOption}
+                    </option>
+                  ))}
                 </select>
               </div>
 
