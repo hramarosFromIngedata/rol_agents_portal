@@ -192,6 +192,14 @@ export default function PortalForm() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  // Only the url/file inputs reset after a successful processing — langue,
+  // code et categorie restent pré-remplis pour le prochain envoi.
+  function resetUrlAndFile() {
+    setUrlSource("");
+    handleClearFile();
+    setTouched((t) => ({ ...t, url: false, file: false }));
+  }
+
   function preventDefaults(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -269,6 +277,7 @@ export default function PortalForm() {
           showToast("Traitement terminé avec succès.", "success");
           stopPolling();
           stopSending();
+          resetUrlAndFile();
           fetch(`/api/executions/${encodeURIComponent(pid)}/report`).catch((err) => {
             console.error(`[n8n] Échec de la récupération du rapport pour l'exécution ${pid} :`, err);
           });
