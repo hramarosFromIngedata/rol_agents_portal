@@ -186,6 +186,12 @@ export default function PortalForm() {
     }
   }
 
+  function handleClearFile() {
+    setFile(null);
+    setFileFormatError(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   function preventDefaults(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -622,6 +628,22 @@ export default function PortalForm() {
                     onChange={handleFileInputChange}
                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   />
+                  {file && (
+                    <button
+                      type="button"
+                      aria-label="Retirer le fichier sélectionné"
+                      disabled={controlsDisabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearFile();
+                      }}
+                      className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/40 text-white transition-colors duration-200 hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-black/40"
+                    >
+                      <svg viewBox="0 0 20 20" className="h-3 w-3 fill-current">
+                        <path d="M10 8.586 4.707 3.293 3.293 4.707 8.586 10l-5.293 5.293 1.414 1.414L10 11.414l5.293 5.293 1.414-1.414L11.414 10l5.293-5.293-1.414-1.414z" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
 
