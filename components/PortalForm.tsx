@@ -392,15 +392,15 @@ export default function PortalForm() {
 
   return (
     <>
-      <div className="mx-auto flex w-[90%] max-w-[1200px] flex-1 flex-wrap items-center gap-10 py-10">
+      <div className="mx-auto flex w-[90%] max-w-[1200px] min-h-0 flex-1 flex-wrap items-center gap-10 py-[clamp(1rem,4vh,2.5rem)]">
         {/* Left column */}
         <div className="flex min-w-[300px] flex-1 flex-col justify-center">
-          <div className="mb-6">
+          <div className="mb-[clamp(0.75rem,2.4vh,1.5rem)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.svg" alt="Ingedata Logo" className="w-[65%]" />
           </div>
           <hr className="h-0.5 w-1/2 rounded-full border-0 bg-white/20" />
-          <h1 className="font-heading py-12 text-[2.5rem] leading-[1.1] font-bold md:text-[3.5rem]">
+          <h1 className="font-heading py-[clamp(1.25rem,4.8vh,3rem)] text-[clamp(1.75rem,4vh,2.5rem)] leading-[1.1] font-bold md:text-[clamp(2rem,5.6vh,3.5rem)]">
             ROL - Portail N8N
           </h1>
 
@@ -464,11 +464,11 @@ export default function PortalForm() {
 
         {/* Right column */}
         <div className="flex min-w-[350px] flex-1 items-center justify-center">
-          <div className="w-full max-w-[500px] rounded-3xl border border-white/20 bg-white/10 p-10 shadow-[0_20px_40px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
-            <h2 className="font-heading pb-6 text-2xl">Informations requises</h2>
+          <div className="w-full max-w-[500px] rounded-3xl border border-white/20 bg-white/10 p-[clamp(1rem,4vh,2.5rem)] shadow-[0_20px_40px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
+            <h2 className="font-heading pb-[clamp(0.75rem,2.4vh,1.5rem)] text-2xl">Informations requises</h2>
 
             <form onSubmit={handleSubmit}>
-              <div className="mb-5">
+              <div className="mb-[clamp(0.625rem,2vh,1.25rem)]">
                 <label htmlFor="url-source" className="mb-2 block text-sm font-semibold">
                   Lien URL
                 </label>
@@ -494,7 +494,7 @@ export default function PortalForm() {
                 />
               </div>
 
-              <div className="mb-5">
+              <div className="mb-[clamp(0.625rem,2vh,1.25rem)]">
                 <label htmlFor="langue" className="mb-2 block text-sm font-semibold">
                   Langue
                 </label>
@@ -521,7 +521,7 @@ export default function PortalForm() {
                 </select>
               </div>
 
-              <div className="mb-5">
+              <div className="mb-[clamp(0.625rem,2vh,1.25rem)]">
                 <label htmlFor="code" className="mb-2 block text-sm font-semibold">
                   Matricule
                 </label>
@@ -548,7 +548,7 @@ export default function PortalForm() {
                 </select>
               </div>
 
-              <div className="mb-5">
+              <div className="mb-[clamp(0.625rem,2vh,1.25rem)]">
                 <label className="mb-2 block text-sm font-semibold">Catégorie</label>
                 <div
                   className={[
@@ -591,7 +591,7 @@ export default function PortalForm() {
                 </div>
               </div>
 
-              <div className="mb-5">
+              <div className="mb-[clamp(0.625rem,2vh,1.25rem)]">
                 <label className="mb-2 block text-sm font-semibold">Document</label>
                 <div
                   onDragEnter={(e) => {
@@ -608,7 +608,7 @@ export default function PortalForm() {
                   }}
                   onDrop={handleDrop}
                   className={[
-                    "relative cursor-pointer rounded-xl border-2 border-dashed bg-black/10 px-5 py-7.5 text-center transition-all duration-300",
+                    "relative cursor-pointer rounded-xl border-2 border-dashed bg-black/10 px-5 py-[clamp(1rem,3vh,1.875rem)] text-center transition-all duration-300",
                     isDragOver
                       ? "border-white bg-white/15"
                       : dropZoneInvalid

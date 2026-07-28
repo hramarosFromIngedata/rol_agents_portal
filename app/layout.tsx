@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${golosText.variable} ${openSans.variable}`}>
       <body
-        className="min-h-screen flex flex-col text-white bg-[#0044ff] bg-cover bg-center bg-fixed bg-no-repeat"
+        className="h-dvh flex flex-col overflow-hidden text-white bg-[#0044ff] bg-cover bg-center bg-fixed bg-no-repeat"
         style={{ backgroundImage: "url('/background.png')" }}
       >
         {children}
