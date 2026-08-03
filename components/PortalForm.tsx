@@ -5,7 +5,20 @@ import ToastContainer, { ToastItem } from "./Toast";
 import ConfirmDialog from "./ConfirmDialog";
 
 const SUBMIT_URL = "/api/submit";
-const URL_REGEX = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
+
+// Uses the URL constructor rather than a hand-rolled regex: a permissive
+// path/host character class combined with a nested quantifier caused
+// catastrophic backtracking (multi-second freeze) on URLs containing
+// characters outside that class deep in the string (e.g. "%20" or a comma).
+function isUrlLike(value: string): boolean {
+  const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  try {
+    new URL(candidate);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Real n8n execution statuses: new/running/waiting are in-flight, success is
 // terminal-ok, error/canceled/crashed are terminal-failure.
@@ -79,7 +92,7 @@ export default function PortalForm() {
   const trimmedUrl = urlSource.trim();
   const hasFile = !!file;
   const hasUrlOrFile = trimmedUrl !== "" || hasFile;
-  const urlPatternOk = trimmedUrl === "" || URL_REGEX.test(trimmedUrl);
+  const urlPatternOk = trimmedUrl === "" || isUrlLike(trimmedUrl);
   const urlProvided = trimmedUrl !== "" && urlPatternOk;
 
   const urlOrFileTouched = touched.url || touched.file;
@@ -484,7 +497,7 @@ export default function PortalForm() {
                     setUrlSource(value);
                     markTouched("url");
                     const trimmed = value.trim();
-                    if (file && trimmed !== "" && URL_REGEX.test(trimmed)) {
+                    if (file && trimmed !== "" && isUrlLike(trimmed)) {
                       setFile(null);
                       setFileFormatError(false);
                       if (fileInputRef.current) fileInputRef.current.value = "";
