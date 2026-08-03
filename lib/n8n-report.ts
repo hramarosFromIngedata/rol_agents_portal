@@ -213,9 +213,15 @@ async function priceOcrUsage(host: string, pagesProcessed: number | null): Promi
   const res = await fetch(webhookUrl(host, "mistralPrice"));
   if (!res.ok) return null;
 
-  const json = (await res.json()) as { price?: { cost?: number; perPage?: number } };
-  const cost = json.price?.cost;
-  const perPage = json.price?.perPage;
+  // n8n may respond with the pricing payload either bare
+  // ({price: {...}}) or wrapped in an array, like the submit/form-data
+  // webhooks.
+  const json = (await res.json()) as
+    | { price?: { cost?: number; perPage?: number } }
+    | { price?: { cost?: number; perPage?: number } }[];
+  const payload = Array.isArray(json) ? json[0] : json;
+  const cost = payload?.price?.cost;
+  const perPage = payload?.price?.perPage;
   if (cost == null || !perPage) return null;
 
   return round5(pagesProcessed * (cost / perPage));
