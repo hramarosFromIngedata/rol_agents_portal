@@ -28,11 +28,9 @@ type AiAgentEntry = {
   completionTokens: number;
   promptTokens: number;
   totalTokens: number;
-  price: {
-    completionCost: number | null;
-    promptCost: number | null;
-    totalCost: number | null;
-  } | null;
+  promptCost: number | null;
+  completionCost: number | null;
+  totalCost: number | null;
 };
 
 // An array rather than a single object: a workflow can call several
@@ -258,13 +256,15 @@ function priceModelUsage(
   pricingByModel: Map<string, OpenRouterPricing> | null,
   model: string | null,
   tokenUsage: TokenUsage
-): { completionCost: number | null; promptCost: number | null; totalCost: number | null } | null {
+): { promptCost: number | null; completionCost: number | null; totalCost: number | null } {
+  const noPrice = { promptCost: null, completionCost: null, totalCost: null };
+
   const pricing = model ? pricingByModel?.get(model) : undefined;
-  if (!pricing) return null;
+  if (!pricing) return noPrice;
 
   const promptRate = Number(pricing.prompt);
   const completionRate = Number(pricing.completion);
-  if (!Number.isFinite(promptRate) || !Number.isFinite(completionRate)) return null;
+  if (!Number.isFinite(promptRate) || !Number.isFinite(completionRate)) return noPrice;
 
   const promptCost = round5(tokenUsage.promptTokens * promptRate);
   const completionCost = round5(tokenUsage.completionTokens * completionRate);
@@ -304,7 +304,7 @@ export async function buildExecutionReport(
             completionTokens: tokenUsage.completionTokens,
             promptTokens: tokenUsage.promptTokens,
             totalTokens: tokenUsage.totalTokens,
-            price: priceModelUsage(aiPricing, model, tokenUsage),
+            ...priceModelUsage(aiPricing, model, tokenUsage),
           }))
         : null,
   };
