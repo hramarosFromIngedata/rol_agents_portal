@@ -50,7 +50,6 @@ export type ExecutionReport = {
   formMetaData: FormMetaData;
   ocrAgent: OcrAgentReport;
   aiAgent: AiAgentReport;
-  agentFeedback: string | null;
 };
 
 // Builds name -> node maps per execution, since node type/parameters live in
@@ -209,13 +208,6 @@ function groupAiUsageByModel(entries: AiUsageEntry[]): { model: string | null; t
   return Array.from(groups, ([model, tokenUsage]) => ({ model, tokenUsage }));
 }
 
-function extractAgentFeedback(executions: N8nExecution[]): string | null {
-  const match = findFieldAnywhere(executions, ["agentFeedback", "feedback"]);
-  if (!match) return null;
-  const value = match.source["agentFeedback"] ?? match.source["feedback"];
-  return typeof value === "string" ? value : null;
-}
-
 function round5(value: number): number {
   return Math.round(value * 1e5) / 1e5;
 }
@@ -315,6 +307,5 @@ export async function buildExecutionReport(
             price: priceModelUsage(aiPricing, model, tokenUsage),
           }))
         : null,
-    agentFeedback: extractAgentFeedback(executions),
   };
 }
