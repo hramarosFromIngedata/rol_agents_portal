@@ -23,15 +23,22 @@ type OcrAgentReport = {
   price: number | null;
 } | null;
 
-type AiAgentReport = {
-  model: string | string[] | null;
-  tokenUsage: TokenUsage | null;
+type AiAgentEntry = {
+  model: string | null;
+  completionTokens: number;
+  promptTokens: number;
+  totalTokens: number;
   price: {
     completionCost: number | null;
     promptCost: number | null;
     totalCost: number | null;
   } | null;
-} | null;
+};
+
+// An array rather than a single object: a workflow can call several
+// different AI Agent models (each with its own OpenRouter rate), so each
+// model gets its own entry rather than being blended into one summed price.
+type AiAgentReport = AiAgentEntry[] | null;
 
 type AiUsageEntry = { model: string | null; tokenUsage: TokenUsage };
 
@@ -185,15 +192,21 @@ function extractAiUsageEntries(executions: N8nExecution[]): AiUsageEntry[] {
   return usageEntries;
 }
 
-function sumTokenUsage(entries: AiUsageEntry[]): TokenUsage {
-  return entries.reduce(
-    (total, entry) => ({
-      completionTokens: total.completionTokens + entry.tokenUsage.completionTokens,
-      promptTokens: total.promptTokens + entry.tokenUsage.promptTokens,
-      totalTokens: total.totalTokens + entry.tokenUsage.totalTokens,
-    }),
-    { completionTokens: 0, promptTokens: 0, totalTokens: 0 }
-  );
+// Groups usage entries by model (summing token usage per model) so each
+// distinct model reported by the workflow ends up as its own aiAgent entry.
+function groupAiUsageByModel(entries: AiUsageEntry[]): { model: string | null; tokenUsage: TokenUsage }[] {
+  const groups = new Map<string | null, TokenUsage>();
+  for (const entry of entries) {
+    const existing = groups.get(entry.model);
+    if (existing) {
+      existing.completionTokens += entry.tokenUsage.completionTokens;
+      existing.promptTokens += entry.tokenUsage.promptTokens;
+      existing.totalTokens += entry.tokenUsage.totalTokens;
+    } else {
+      groups.set(entry.model, { ...entry.tokenUsage });
+    }
+  }
+  return Array.from(groups, ([model, tokenUsage]) => ({ model, tokenUsage }));
 }
 
 function extractAgentFeedback(executions: N8nExecution[]): string | null {
@@ -227,52 +240,43 @@ async function priceOcrUsage(host: string, pagesProcessed: number | null): Promi
   return round5(pagesProcessed * (cost / perPage));
 }
 
-// Prices each usage entry against its own model's OpenRouter rate (calls can
-// use different models, so a single blended rate would be wrong), then sums
-// the results. Entries whose model isn't found in the catalog are skipped
-// rather than failing the whole calculation.
-async function priceAiUsage(
-  host: string,
-  entries: AiUsageEntry[]
-): Promise<{ completionCost: number | null; promptCost: number | null; totalCost: number | null } | null> {
-  if (entries.length === 0) return null;
+type OpenRouterPricing = { prompt?: string; completion?: string };
 
+async function fetchOpenRouterPricing(host: string): Promise<Map<string, OpenRouterPricing> | null> {
   const res = await fetch(webhookUrl(host, "openrouterPrice"));
   if (!res.ok) return null;
 
-  const json = (await res.json()) as {
-    data?: { id?: string; pricing?: { prompt?: string; completion?: string } }[];
-  };
-  const pricingByModel = new Map(
-    (json.data ?? []).filter((m) => m.id && m.pricing).map((m) => [m.id as string, m.pricing!])
+  // n8n may respond with the pricing payload either bare ({data: [...]})
+  // or wrapped in an array, like the submit/form-data/mistral-price
+  // webhooks.
+  const json = (await res.json()) as
+    | { data?: { id?: string; pricing?: OpenRouterPricing }[] }
+    | { data?: { id?: string; pricing?: OpenRouterPricing }[] }[];
+  const payload = Array.isArray(json) ? json[0] : json;
+
+  return new Map(
+    (payload?.data ?? []).filter((m) => m.id && m.pricing).map((m) => [m.id as string, m.pricing!])
   );
+}
 
-  let promptCost = 0;
-  let completionCost = 0;
-  let priced = false;
+// Prices a single model's usage against its own OpenRouter rate. Returns
+// null if the model is missing or not found in the catalog, rather than
+// failing the whole report.
+function priceModelUsage(
+  pricingByModel: Map<string, OpenRouterPricing> | null,
+  model: string | null,
+  tokenUsage: TokenUsage
+): { completionCost: number | null; promptCost: number | null; totalCost: number | null } | null {
+  const pricing = model ? pricingByModel?.get(model) : undefined;
+  if (!pricing) return null;
 
-  for (const entry of entries) {
-    const pricing = entry.model ? pricingByModel.get(entry.model) : undefined;
-    if (!pricing) continue;
+  const promptRate = Number(pricing.prompt);
+  const completionRate = Number(pricing.completion);
+  if (!Number.isFinite(promptRate) || !Number.isFinite(completionRate)) return null;
 
-    const promptRate = Number(pricing.prompt);
-    const completionRate = Number(pricing.completion);
-    if (!Number.isFinite(promptRate) || !Number.isFinite(completionRate)) continue;
-
-    priced = true;
-    promptCost += entry.tokenUsage.promptTokens * promptRate;
-    completionCost += entry.tokenUsage.completionTokens * completionRate;
-  }
-
-  if (!priced) return null;
-
-  const roundedPromptCost = round5(promptCost);
-  const roundedCompletionCost = round5(completionCost);
-  return {
-    promptCost: roundedPromptCost,
-    completionCost: roundedCompletionCost,
-    totalCost: round5(roundedPromptCost + roundedCompletionCost),
-  };
+  const promptCost = round5(tokenUsage.promptTokens * promptRate);
+  const completionCost = round5(tokenUsage.completionTokens * completionRate);
+  return { promptCost, completionCost, totalCost: round5(promptCost + completionCost) };
 }
 
 export async function buildExecutionReport(
@@ -285,12 +289,11 @@ export async function buildExecutionReport(
   if (!root) return null;
 
   const ocrUsage = extractOcrUsage(executions);
-  const aiUsageEntries = extractAiUsageEntries(executions);
-  const aiModels = Array.from(new Set(aiUsageEntries.map((e) => e.model).filter((m): m is string => m != null)));
+  const aiUsageGroups = groupAiUsageByModel(extractAiUsageEntries(executions));
 
-  const [ocrPrice, aiPrice] = await Promise.all([
+  const [ocrPrice, aiPricing] = await Promise.all([
     priceOcrUsage(host, ocrUsage?.pagesProcessed ?? null),
-    priceAiUsage(host, aiUsageEntries),
+    aiUsageGroups.length > 0 ? fetchOpenRouterPricing(host) : Promise.resolve(null),
   ]);
 
   return {
@@ -303,12 +306,14 @@ export async function buildExecutionReport(
       ? { model: ocrUsage.model, pagesProcessed: ocrUsage.pagesProcessed, price: ocrPrice }
       : null,
     aiAgent:
-      aiUsageEntries.length > 0
-        ? {
-            model: aiModels.length <= 1 ? (aiModels[0] ?? null) : aiModels,
-            tokenUsage: sumTokenUsage(aiUsageEntries),
-            price: aiPrice,
-          }
+      aiUsageGroups.length > 0
+        ? aiUsageGroups.map(({ model, tokenUsage }) => ({
+            model,
+            completionTokens: tokenUsage.completionTokens,
+            promptTokens: tokenUsage.promptTokens,
+            totalTokens: tokenUsage.totalTokens,
+            price: priceModelUsage(aiPricing, model, tokenUsage),
+          }))
         : null,
     agentFeedback: extractAgentFeedback(executions),
   };
