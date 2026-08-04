@@ -481,12 +481,12 @@ export default function PortalForm() {
           </h1>
 
           <div className="mt-3 space-y-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
-            <p className="text-sm"><strong>id d&apos;exécution:</strong> {executionId ?? "—"}</p>
+            <p className="text-sm"><u><strong>id d&apos;exécution:</strong></u> {executionId ?? "—"}</p>
             <p className="text-sm">
-              <strong>Temps de traitement:</strong> {hours} heures : {minutes} minutes : {seconds} secondes
+              <u><strong>Temps de traitement:</strong></u> {hours} heures : {minutes} minutes : {seconds} secondes
             </p>
-            <p className="text-sm"><strong>status:</strong> {runStatus ?? "—"}</p>
-            <p className="text-sm"><strong>status_message:</strong> {statusMessage ?? "—"}</p>
+            <p className="text-sm"><u><strong>status:</strong></u> {runStatus ?? "—"}</p>
+            <p className="text-sm"><u><strong>status_message:</strong></u> {statusMessage ?? "—"}</p>
           </div>
         </div>
 
