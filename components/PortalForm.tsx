@@ -83,7 +83,11 @@ export default function PortalForm() {
   const [sendingState, setSendingState] = useState<SendingState>("idle");
   const [elapsedMs, setElapsedMs] = useState(0);
   const [processId, setProcessId] = useState<string | null>(null);
-  const [workflowId, setWorkflowId] = useState<string | null>(null);
+  // Kept separate from processId, which gets cleared to null once
+  // processing stops (stopPolling) so the stop button/beforeunload handler
+  // know there's nothing left to cancel — this persists for display even
+  // after the run has terminated.
+  const [executionId, setExecutionId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<"processing" | "error" | "finished" | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
@@ -258,7 +262,7 @@ export default function PortalForm() {
   function startSending() {
     timerStartRef.current = Date.now();
     setElapsedMs(0);
-    setWorkflowId(null);
+    setExecutionId(null);
     setRunStatus("processing");
     setStatusMessage(null);
     setSendingState("sending");
@@ -317,7 +321,6 @@ export default function PortalForm() {
 
         if (!r.ok) return;
         const j = await r.json();
-        if (typeof j?.workflowId === "string") setWorkflowId(j.workflowId);
         const st: string | null = j?.status ?? null;
         if (!st) return;
 
@@ -413,6 +416,7 @@ export default function PortalForm() {
       if (payload && payload.code === 202 && payload.status === "processing") {
         const pid: string | null = (payload.process_id as string) || null;
         setProcessId(pid);
+        setExecutionId(pid);
         if (pid) startPolling(pid);
         return;
       }
@@ -477,12 +481,12 @@ export default function PortalForm() {
           </h1>
 
           <div className="mt-3 space-y-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
-            <p className="text-sm">id du workflow: {workflowId ?? "—"}</p>
+            <p className="text-sm"><strong>id d&apos;exécution:</strong> {executionId ?? "—"}</p>
             <p className="text-sm">
-              temps de traitement: {hours} heures : {minutes} minutes : {seconds} secondes
+              <strong>Temps de traitement:</strong> {hours} heures : {minutes} minutes : {seconds} secondes
             </p>
-            <p className="text-sm">status: {runStatus ?? "—"}</p>
-            <p className="text-sm">status_message: {statusMessage ?? "—"}</p>
+            <p className="text-sm"><strong>status:</strong> {runStatus ?? "—"}</p>
+            <p className="text-sm"><strong>status_message:</strong> {statusMessage ?? "—"}</p>
           </div>
         </div>
 
