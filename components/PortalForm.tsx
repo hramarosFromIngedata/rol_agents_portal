@@ -139,6 +139,32 @@ export default function PortalForm() {
     };
   }, []);
 
+  // Warn before leaving/reloading while a treatment is in flight, and if the
+  // user actually leaves, cancel it server-side rather than letting it run
+  // unattended. unload only fires once beforeunload's prompt is accepted (or
+  // isn't shown), so a cancelled reload never triggers the stop call.
+  // sendBeacon (not fetch) is used because regular requests can get aborted
+  // mid-flight once the page starts tearing down.
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (sendingState !== "sending") return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+
+    function handleUnload() {
+      if (sendingState !== "sending" || !processId) return;
+      navigator.sendBeacon(`${BASE_PATH}/api/executions/${encodeURIComponent(processId)}/stop`);
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("unload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("unload", handleUnload);
+    };
+  }, [sendingState, processId]);
+
   // Matricules and langues are fetched fresh on every render of the page
   // (mount) rather than hardcoded, so both dropdowns always reflect the
   // current form data.
