@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import ToastContainer, { ToastItem } from "./Toast";
 import ConfirmDialog from "./ConfirmDialog";
 
 // Next only auto-prefixes next/link, next/router and next/image with
@@ -84,12 +83,13 @@ export default function PortalForm() {
   const [sendingState, setSendingState] = useState<SendingState>("idle");
   const [elapsedMs, setElapsedMs] = useState(0);
   const [processId, setProcessId] = useState<string | null>(null);
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [workflowId, setWorkflowId] = useState<string | null>(null);
+  const [runStatus, setRunStatus] = useState<"processing" | "error" | "finished" | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const toastIdRef = useRef(0);
   const timerStartRef = useRef<number | null>(null);
 
   const trimmedUrl = urlSource.trim();
@@ -191,16 +191,6 @@ export default function PortalForm() {
 
   const { hours, minutes, seconds } = formatTime(elapsedMs);
 
-  function showToast(message: string, type: "success" | "error" = "error", duration = 5000) {
-    const id = ++toastIdRef.current;
-    setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => dismissToast(id), duration);
-  }
-
-  function dismissToast(id: number) {
-    setToasts((t) => t.filter((x) => x.id !== id));
-  }
-
   function markTouched(key: keyof Touched) {
     setTouched((t) => (t[key] ? t : { ...t, [key]: true }));
   }
@@ -265,13 +255,12 @@ export default function PortalForm() {
     setTouched({ langue: false, code: false, categorie: false, url: false, file: false });
   }
 
-  function resetTimer() {
+  function startSending() {
     timerStartRef.current = Date.now();
     setElapsedMs(0);
-  }
-
-  function startSending() {
-    resetTimer();
+    setWorkflowId(null);
+    setRunStatus("processing");
+    setStatusMessage(null);
     setSendingState("sending");
   }
 
@@ -317,15 +306,18 @@ export default function PortalForm() {
         // never will — retrying won't help, so abandon this task immediately
         // instead of polling forever every 3s.
         if (r.status === 404) {
-          console.error(`[n8n] Exécution ${pid} introuvable (HTTP 404) : abandon du suivi.`);
-          showToast("Exécution introuvable (404) : abandon du suivi.", "error");
+          const message = "Exécution introuvable (404) : abandon du suivi.";
+          console.error(`[n8n] ${message}`);
           stopPolling();
           stopSending();
+          setRunStatus("error");
+          setStatusMessage(message);
           return;
         }
 
         if (!r.ok) return;
         const j = await r.json();
+        if (typeof j?.workflowId === "string") setWorkflowId(j.workflowId);
         const st: string | null = j?.status ?? null;
         if (!st) return;
 
@@ -333,9 +325,10 @@ export default function PortalForm() {
         if (RUNNING_STATUSES.includes(st)) return;
 
         if (st === "success") {
-          showToast("Traitement terminé avec succès.", "success");
           stopPolling();
           stopSending();
+          setRunStatus("finished");
+          setStatusMessage("executed successfully");
           resetUrlAndFile();
           fetchReport(pid);
           return;
@@ -344,6 +337,7 @@ export default function PortalForm() {
         if (FAILURE_STATUSES.includes(st)) {
           stopPolling();
           stopSending();
+          setRunStatus("error");
 
           // Only "error" gets a dynamic message (the real n8n failure
           // reason, via status_message — same method as the sheet report:
@@ -355,21 +349,23 @@ export default function PortalForm() {
             const message =
               typeof report?.status_message === "string" ? report.status_message : FAILURE_MESSAGES.error;
             console.error(`[n8n] Exécution ${pid} terminée avec le statut "error" : ${message}`);
-            showToast(message, "error");
+            setStatusMessage(message);
           } else {
             const message = FAILURE_MESSAGES[st];
             console.error(`[n8n] Exécution ${pid} terminée avec le statut "${st}" : ${message}`);
-            showToast(message, "error");
+            setStatusMessage(message);
             fetchReport(pid);
           }
           return;
         }
 
         // Unexpected status value: surface it explicitly rather than polling forever.
+        const message = `Statut inattendu reçu : ${st}`;
         console.error(`[n8n] Exécution ${pid} a retourné un statut inattendu : "${st}".`);
-        showToast(`Statut inattendu reçu : ${st}`, "error");
         stopPolling();
         stopSending();
+        setRunStatus("error");
+        setStatusMessage(message);
       } catch (err) {
         console.error("Erreur lors du polling du statut n8n :", err);
       }
@@ -395,7 +391,8 @@ export default function PortalForm() {
 
       if (!res.ok) {
         stopSending();
-        showToast("Erreur serveur : " + res.status + " " + res.statusText, "error");
+        setRunStatus("error");
+        setStatusMessage("Erreur serveur : " + res.status + " " + res.statusText);
         return;
       }
 
@@ -416,17 +413,18 @@ export default function PortalForm() {
       if (payload && payload.code === 202 && payload.status === "processing") {
         const pid: string | null = (payload.process_id as string) || null;
         setProcessId(pid);
-        showToast("Traitement en cours (process_id: " + (pid || "n/a") + ")", "success");
         if (pid) startPolling(pid);
         return;
       }
 
       stopSending();
-      showToast("Données envoyées avec succès.", "success");
+      setRunStatus("finished");
+      setStatusMessage("Données envoyées avec succès.");
       resetForm();
     } catch {
       stopSending();
-      showToast("Erreur réseau : impossible d'atteindre le serveur.", "error");
+      setRunStatus("error");
+      setStatusMessage("Erreur réseau : impossible d'atteindre le serveur.");
     }
   }
 
@@ -438,25 +436,27 @@ export default function PortalForm() {
 
   function performStop() {
     if (!processId) {
-      showToast("Aucun process_id disponible pour arrêter le traitement.", "error");
+      console.error("Aucun process_id disponible pour arrêter le traitement.");
       return;
     }
 
     const pid = processId;
     stopSending();
+    setRunStatus("error");
+    setStatusMessage("Traitement arrêté.");
     fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/stop`, { method: "POST" })
       .then((res) => {
         if (!res.ok) {
+          const message = `Impossible d'arrêter le traitement (serveur, HTTP ${res.status}).`;
           console.error(`[n8n] Échec de la demande d'arrêt pour l'exécution ${pid} (HTTP ${res.status}).`);
-          showToast("Impossible d'arrêter le traitement (serveur).", "error");
+          setStatusMessage(message);
           return;
         }
-        showToast("Traitement arrêté.", "success");
         stopPolling();
       })
       .catch((err) => {
         console.error("Erreur réseau lors de la demande d'arrêt du traitement :", err);
-        showToast("Erreur réseau lors de la demande d'arrêt.", "error");
+        setStatusMessage("Erreur réseau lors de la demande d'arrêt.");
       });
   }
 
@@ -476,62 +476,13 @@ export default function PortalForm() {
             ROL - Portail N8N
           </h1>
 
-          <div className="mt-3 inline-flex items-center justify-start gap-4">
-            <div className="flex min-w-[90px] flex-col items-center justify-center rounded-[20px] border border-white/20 bg-white/10 px-[18px] py-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
-              <div className="flex h-12 items-center justify-center overflow-hidden">
-                <span
-                  key={hours}
-                  className="font-heading animate-slide-up block text-[2rem] leading-none font-bold tracking-[-1px]"
-                >
-                  {hours}
-                </span>
-              </div>
-              <span className="mt-2 text-[0.75rem] font-semibold tracking-[1.8px] text-white/70 uppercase">
-                Heures
-              </span>
-            </div>
-            <div className="font-heading pb-1.5 text-[2rem] font-bold text-white/70">:</div>
-            <div className="flex min-w-[90px] flex-col items-center justify-center rounded-[20px] border border-white/20 bg-white/10 px-[18px] py-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
-              <div className="flex h-12 items-center justify-center overflow-hidden">
-                <span
-                  key={minutes}
-                  className="font-heading animate-slide-up block text-[2rem] leading-none font-bold tracking-[-1px]"
-                >
-                  {minutes}
-                </span>
-              </div>
-              <span className="mt-2 text-[0.75rem] font-semibold tracking-[1.8px] text-white/70 uppercase">
-                Minutes
-              </span>
-            </div>
-            <div className="font-heading pb-1.5 text-[2rem] font-bold text-white/70">:</div>
-            <div className="flex min-w-[90px] flex-col items-center justify-center rounded-[20px] border border-white/20 bg-white/10 px-[18px] py-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
-              <div className="flex h-12 items-center justify-center overflow-hidden">
-                <span
-                  key={seconds}
-                  className="font-heading animate-slide-up block text-[2rem] leading-none font-bold tracking-[-1px]"
-                >
-                  {seconds}
-                </span>
-              </div>
-              <span className="mt-2 text-[0.75rem] font-semibold tracking-[1.8px] text-white/70 uppercase">
-                Secondes
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={resetTimer}
-              disabled={controlsDisabled}
-              title="Réinitialiser le chronomètre"
-              aria-label="Réinitialiser le chronomètre"
-              className="ml-2 flex h-10 w-10 flex-none items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 transition-colors duration-300 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/10 disabled:hover:text-white/70"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                <path d="M12,2a10.032,10.032,0,0,1,7.122,3H16a1,1,0,0,0-1,1h0a1,1,0,0,0,1,1h4.143A1.858,1.858,0,0,0,22,5.143V1a1,1,0,0,0-1-1h0a1,1,0,0,0-1,1V3.078A11.981,11.981,0,0,0,.05,10.9a1.007,1.007,0,0,0,1,1.1h0a.982.982,0,0,0,.989-.878A10.014,10.014,0,0,1,12,2Z" />
-                <path d="M22.951,12a.982.982,0,0,0-.989.878A9.986,9.986,0,0,1,4.878,19H8a1,1,0,0,0,1-1H9a1,1,0,0,0-1-1H3.857A1.856,1.856,0,0,0,2,18.857V23a1,1,0,0,0,1,1H3a1,1,0,0,0,1-1V20.922A11.981,11.981,0,0,0,23.95,13.1a1.007,1.007,0,0,0-1-1.1Z" />
-              </svg>
-            </button>
+          <div className="mt-3 space-y-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
+            <p className="text-sm">id du workflow: {workflowId ?? "—"}</p>
+            <p className="text-sm">
+              temps de traitement: {hours} heures : {minutes} minutes : {seconds} secondes
+            </p>
+            <p className="text-sm">status: {runStatus ?? "—"}</p>
+            <p className="text-sm">status_message: {statusMessage ?? "—"}</p>
           </div>
         </div>
 
@@ -767,8 +718,6 @@ export default function PortalForm() {
           </div>
         </div>
       </div>
-
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <ConfirmDialog
         open={confirmStep === 1}

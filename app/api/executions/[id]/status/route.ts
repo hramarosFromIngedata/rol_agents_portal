@@ -28,5 +28,5 @@ export async function GET(
   }
 
   const data = await res.json();
-  return NextResponse.json({ status: data?.status ?? null });
+  return NextResponse.json({ status: data?.status ?? null, workflowId: data?.workflowId ?? null });
 }
