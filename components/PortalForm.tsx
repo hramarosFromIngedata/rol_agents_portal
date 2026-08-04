@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import ToastContainer, { ToastItem } from "./Toast";
 import ConfirmDialog from "./ConfirmDialog";
 
-const SUBMIT_URL = "/api/submit";
+// Next only auto-prefixes next/link, next/router and next/image with
+// basePath — plain fetch() calls and <img> src attributes need it by hand.
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const SUBMIT_URL = `${BASE_PATH}/api/submit`;
 
 // Uses the URL constructor rather than a hand-rolled regex: a permissive
 // path/host character class combined with a nested quantifier caused
@@ -141,7 +144,7 @@ export default function PortalForm() {
   // current form data.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/form-data")
+    fetch(`${BASE_PATH}/api/form-data`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { matricules?: unknown; langues?: unknown } | null) => {
         if (cancelled || !json) return;
@@ -265,7 +268,7 @@ export default function PortalForm() {
     if (pollRef.current) return;
     pollRef.current = setInterval(async () => {
       try {
-        const r = await fetch(`/api/executions/${encodeURIComponent(pid)}/status`);
+        const r = await fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/status`);
 
         // 404 means the execution doesn't exist (bad id, deleted, ...) and
         // never will — retrying won't help, so abandon this task immediately
@@ -291,7 +294,7 @@ export default function PortalForm() {
           stopPolling();
           stopSending();
           resetUrlAndFile();
-          fetch(`/api/executions/${encodeURIComponent(pid)}/report`).catch((err) => {
+          fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/report`).catch((err) => {
             console.error(`[n8n] Échec de la récupération du rapport pour l'exécution ${pid} :`, err);
           });
           return;
@@ -385,7 +388,7 @@ export default function PortalForm() {
 
     const pid = processId;
     stopSending();
-    fetch(`/api/executions/${encodeURIComponent(pid)}/stop`, { method: "POST" })
+    fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/stop`, { method: "POST" })
       .then((res) => {
         if (!res.ok) {
           console.error(`[n8n] Échec de la demande d'arrêt pour l'exécution ${pid} (HTTP ${res.status}).`);
@@ -410,7 +413,7 @@ export default function PortalForm() {
         <div className="flex min-w-[300px] flex-1 flex-col justify-center">
           <div className="mb-[clamp(0.75rem,2.4vh,1.5rem)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="Ingedata Logo" className="w-[65%]" />
+            <img src={`${BASE_PATH}/logo.svg`} alt="Ingedata Logo" className="w-[65%]" />
           </div>
           <hr className="h-0.5 w-1/2 rounded-full border-0 bg-white/20" />
           <h1 className="font-heading py-[clamp(1.25rem,4.8vh,3rem)] text-[clamp(1.75rem,4vh,2.5rem)] leading-[1.1] font-bold md:text-[clamp(2rem,5.6vh,3.5rem)]">

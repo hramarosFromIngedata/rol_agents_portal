@@ -117,8 +117,10 @@ server {
     listen 80;
     server_name votre-domaine.com;
 
-    # Assets statiques : cache long, servis directement par nginx
-    location /_next/static/ {
+    # Assets statiques : cache long, servis directement par nginx.
+    # Le préfixe /rol/ reflète basePath/assetPrefix dans next.config.ts —
+    # à adapter si cette valeur change.
+    location /rol/_next/static/ {
         alias /var/www/portal/.next/static/;
         expires 365d;
         access_log off;

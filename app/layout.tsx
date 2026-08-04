@@ -14,10 +14,12 @@ const openSans = Open_Sans({
   weight: ["400", "500", "600"],
 });
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export const metadata: Metadata = {
   title: "Ingedata - Portail Red-On-Line",
   icons: {
-    icon: "/favicon.svg",
+    icon: `${basePath}/favicon.svg`,
   },
 };
 
@@ -30,7 +32,7 @@ export default function RootLayout({
     <html lang="fr" className={`${golosText.variable} ${openSans.variable}`}>
       <body
         className="h-dvh flex flex-col overflow-hidden text-white bg-[#0044ff] bg-cover bg-center bg-fixed bg-no-repeat"
-        style={{ backgroundImage: "url('/background.png')" }}
+        style={{ backgroundImage: `url('${basePath}/background.png')` }}
       >
         {children}
       </body>
