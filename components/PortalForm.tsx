@@ -496,9 +496,10 @@ export default function PortalForm() {
             <button
               type="button"
               onClick={resetTimer}
+              disabled={controlsDisabled}
               title="Réinitialiser le chronomètre"
               aria-label="Réinitialiser le chronomètre"
-              className="ml-2 flex h-10 w-10 flex-none items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 transition-colors duration-300 hover:bg-white/15 hover:text-white"
+              className="ml-2 flex h-10 w-10 flex-none items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 transition-colors duration-300 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/10 disabled:hover:text-white/70"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
                 <path d="M12,2a10.032,10.032,0,0,1,7.122,3H16a1,1,0,0,0-1,1h0a1,1,0,0,0,1,1h4.143A1.858,1.858,0,0,0,22,5.143V1a1,1,0,0,0-1-1h0a1,1,0,0,0-1,1V3.078A11.981,11.981,0,0,0,.05,10.9a1.007,1.007,0,0,0,1,1.1h0a.982.982,0,0,0,.989-.878A10.014,10.014,0,0,1,12,2Z" />
