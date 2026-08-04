@@ -44,6 +44,7 @@ export type ExecutionReport = {
   executionId: string;
   workflowId: string | null;
   status: "success" | "error";
+  status_message: string;
   startedAt: string | null;
   stoppedAt: string | null;
   formMetaData: FormMetaData;
@@ -96,6 +97,29 @@ function findFieldAnywhere(
       }
     }
   }
+  return null;
+}
+
+// n8n's own resultData.error.message already carries the actual failure
+// message (whether a genuine node exception or an author-configured
+// "Stop and Error" message) — checked first since it's the canonical
+// source. Falls back to reading the errorMessage parameter directly off
+// the node on top of the execution stack (lastNodeExecuted) for the rare
+// case resultData.error is missing but the run still stopped on error.
+function extractErrorMessage(root: N8nExecution): string | null {
+  const resultData = root.data?.resultData;
+  if (typeof resultData?.error?.message === "string") return resultData.error.message;
+
+  const lastNode = resultData?.lastNodeExecuted;
+  const stack = root.data?.executionData?.nodeExecutionStack ?? [];
+  for (const entry of stack) {
+    if (lastNode && entry.node?.name !== lastNode) continue;
+    const params = entry.node?.parameters;
+    if (params?.["errorType"] === "errorMessage" && typeof params["errorMessage"] === "string") {
+      return params["errorMessage"] as string;
+    }
+  }
+
   return null;
 }
 
@@ -289,13 +313,18 @@ export async function buildExecutionReport(
     aiUsageGroups.length > 0 ? fetchOpenRouterPricing(host) : Promise.resolve(null),
   ]);
 
+  // n8n's own terminal statuses are success/error/canceled/crashed; the
+  // report only ever gets built once a run has reached one of those, so
+  // anything other than "success" is reported as "error".
+  const isSuccess = root.status === "success";
+
   return {
     executionId: root.id,
     workflowId: root.workflowId ?? root.workflowData?.id ?? null,
-    // n8n's own terminal statuses are success/error/canceled/crashed; the
-    // report only ever gets built once a run has reached one of those, so
-    // anything other than "success" is reported as "error".
-    status: root.status === "success" ? "success" : "error",
+    status: isSuccess ? "success" : "error",
+    status_message: isSuccess
+      ? "executed successfully"
+      : (extractErrorMessage(root) ?? "Erreur inconnue"),
     startedAt: root.startedAt ?? null,
     stoppedAt: root.stoppedAt ?? null,
     formMetaData: extractFormMetaData(executions),

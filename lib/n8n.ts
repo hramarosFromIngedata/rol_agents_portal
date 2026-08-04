@@ -30,6 +30,16 @@ export type N8nExecution = {
   data?: {
     resultData?: {
       runData?: N8nRunData;
+      lastNodeExecuted?: string;
+      // n8n's own runtime error, present whenever status is "error" —
+      // .message already carries the node's actual failure message
+      // (including author-configured "Stop and Error" messages).
+      error?: { message?: string };
+    };
+    executionData?: {
+      // Node about to run (or that just failed) when execution stopped —
+      // fallback source for the error message if resultData.error is absent.
+      nodeExecutionStack?: { node?: { name?: string; parameters?: Record<string, unknown> } }[];
     };
   };
   workflowData?: {
