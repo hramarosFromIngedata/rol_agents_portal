@@ -43,6 +43,7 @@ type AiUsageEntry = { model: string | null; tokenUsage: TokenUsage };
 export type ExecutionReport = {
   executionId: string;
   workflowId: string | null;
+  status: "success" | "error";
   startedAt: string | null;
   stoppedAt: string | null;
   formMetaData: FormMetaData;
@@ -291,6 +292,10 @@ export async function buildExecutionReport(
   return {
     executionId: root.id,
     workflowId: root.workflowId ?? root.workflowData?.id ?? null,
+    // n8n's own terminal statuses are success/error/canceled/crashed; the
+    // report only ever gets built once a run has reached one of those, so
+    // anything other than "success" is reported as "error".
+    status: root.status === "success" ? "success" : "error",
     startedAt: root.startedAt ?? null,
     stoppedAt: root.stoppedAt ?? null,
     formMetaData: extractFormMetaData(executions),

@@ -264,6 +264,15 @@ export default function PortalForm() {
     setProcessId(null);
   }
 
+  // Fire-and-forget: triggers report construction + storage to the sheet
+  // (see app/api/executions/[id]/report/route.ts) for both terminal
+  // outcomes, success and failure, so failed runs are tracked too.
+  function fetchReport(pid: string) {
+    fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/report`).catch((err) => {
+      console.error(`[n8n] Échec de la récupération du rapport pour l'exécution ${pid} :`, err);
+    });
+  }
+
   function startPolling(pid: string) {
     if (pollRef.current) return;
     pollRef.current = setInterval(async () => {
@@ -294,9 +303,7 @@ export default function PortalForm() {
           stopPolling();
           stopSending();
           resetUrlAndFile();
-          fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/report`).catch((err) => {
-            console.error(`[n8n] Échec de la récupération du rapport pour l'exécution ${pid} :`, err);
-          });
+          fetchReport(pid);
           return;
         }
 
@@ -306,6 +313,7 @@ export default function PortalForm() {
           showToast(message, "error");
           stopPolling();
           stopSending();
+          fetchReport(pid);
           return;
         }
 
