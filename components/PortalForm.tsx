@@ -264,13 +264,21 @@ export default function PortalForm() {
     setProcessId(null);
   }
 
-  // Fire-and-forget: triggers report construction + storage to the sheet
-  // (see app/api/executions/[id]/report/route.ts) for both terminal
-  // outcomes, success and failure, so failed runs are tracked too.
-  function fetchReport(pid: string) {
-    fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/report`).catch((err) => {
+  // Triggers report construction + storage to the sheet (see
+  // app/api/executions/[id]/report/route.ts) for both terminal outcomes,
+  // success and failure, so failed runs are tracked too. Returns the report
+  // (or null on failure) so callers that need status_message can await it;
+  // callers that only care about the storage side effect can call it
+  // fire-and-forget.
+  async function fetchReport(pid: string): Promise<{ status_message?: string } | null> {
+    try {
+      const res = await fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(pid)}/report`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
       console.error(`[n8n] Échec de la récupération du rapport pour l'exécution ${pid} :`, err);
-    });
+      return null;
+    }
   }
 
   function startPolling(pid: string) {
@@ -308,12 +316,26 @@ export default function PortalForm() {
         }
 
         if (FAILURE_STATUSES.includes(st)) {
-          const message = FAILURE_MESSAGES[st];
-          console.error(`[n8n] Exécution ${pid} terminée avec le statut "${st}" : ${message}`);
-          showToast(message, "error");
           stopPolling();
           stopSending();
-          fetchReport(pid);
+
+          // Only "error" gets a dynamic message (the real n8n failure
+          // reason, via status_message — same method as the sheet report:
+          // resultData.error.message from includeData=true). canceled/
+          // crashed keep their static messages since they aren't node
+          // failures with a meaningful error text to surface.
+          if (st === "error") {
+            const report = await fetchReport(pid);
+            const message =
+              typeof report?.status_message === "string" ? report.status_message : FAILURE_MESSAGES.error;
+            console.error(`[n8n] Exécution ${pid} terminée avec le statut "error" : ${message}`);
+            showToast(message, "error");
+          } else {
+            const message = FAILURE_MESSAGES[st];
+            console.error(`[n8n] Exécution ${pid} terminée avec le statut "${st}" : ${message}`);
+            showToast(message, "error");
+            fetchReport(pid);
+          }
           return;
         }
 
