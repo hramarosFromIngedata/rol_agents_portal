@@ -1,0 +1,27 @@
+services:
+  portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rol-portal:latest
+    container_name: rol-portal
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      # APP_PORT is the port on the HOST. It is NOT hardcoded on purpose:
+      # this is meant to run on a shared server (other containers/services
+      # may already own 3000, 3001, ...). Before first deploy, check what's
+      # free with `ss -ltnp` or `docker ps --format "{{.Names}} {{.Ports}}"`
+      # and set APP_PORT accordingly in .env — see DEPLOY.md.
+      #
+      # Bound to 127.0.0.1 only: the container is never reachable directly
+      # from outside this host. The host's own Nginx (see DEPLOY.md)
+      # reverse-proxies to it, exactly like the non-Docker deployment.
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/rol"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

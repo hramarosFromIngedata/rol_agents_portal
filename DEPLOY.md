@@ -192,3 +192,110 @@ de l'étape 3. Vérifier `ls /var/www/portal/.next/BUILD_ID`.
 **La page charge sans styles/JS**
 → `.next/static/` n'a pas été copié à côté de `.next/` sur le serveur (le
 standalone ne l'embarque pas automatiquement).
+
+---
+
+# Alternative : déploiement via Docker
+
+`Dockerfile` (build multi-stage, réutilise `output: "standalone"`) et
+`docker-compose.yaml` sont fournis à la racine du repo. Pas besoin d'installer
+Node sur le serveur — seul Docker y est nécessaire.
+
+## 1. Prérequis serveur
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER   # puis se reconnecter
+docker --version
+docker compose version
+```
+
+## 2. Récupérer le repo sur le serveur
+
+```bash
+git clone <url-du-repo> /opt/rol-portal
+cd /opt/rol-portal
+```
+
+(Ou `git pull` si déjà cloné — le build Docker se fait directement sur le
+serveur à partir du repo, pas de transfert manuel de `.next/standalone/`.)
+
+## 3. Configurer `.env`
+
+```bash
+cp .env.example .env
+```
+
+Remplir `N8N_HOST`/`N8N_API_KEY` (mêmes valeurs que `.env.local.example`).
+
+⚠️ **Conflits de ports** : ce serveur héberge probablement déjà d'autres
+sites/containers. `APP_PORT` (dans `.env`) est le port **hôte** sur lequel
+le container sera exposé (en local uniquement, voir `docker-compose.yaml`)
+— vérifier qu'il est libre avant de déployer :
+
+```bash
+ss -ltnp | grep <port>                              # rien ne doit répondre
+docker ps --format "{{.Names}}\t{{.Ports}}"          # ports déjà pris par d'autres containers
+```
+
+Ajuster `APP_PORT=` dans `.env` si le défaut (3100) est déjà utilisé.
+
+## 4. Build + lancement
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f portal
+```
+
+## 5. Nginx (reverse proxy, sur l'hôte)
+
+Même principe qu'en déploiement manuel (§6-7 ci-dessus), mais tout — y
+compris les assets `/rol/_next/static/` — est servi par le container ; pas
+besoin d'un `location` séparé pour les assets statiques :
+
+```nginx
+server {
+    listen 80;
+    server_name votre-domaine.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:${APP_PORT};   # remplacer par la vraie valeur de .env
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+Puis Certbot/pare-feu comme aux étapes 7-8 ci-dessus.
+
+## 6. Vérification
+
+```bash
+curl -I http://127.0.0.1:${APP_PORT}/rol   # remplacer par la vraie valeur de .env
+docker compose ps                          # healthcheck doit passer à "healthy"
+```
+
+## 7. Mise à jour (déploiements suivants)
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+## Dépannage (Docker)
+
+**`Bind for 127.0.0.1:XXXX failed: port is already allocated`**
+→ Conflit de port avec un autre container/service sur ce serveur. Changer
+`APP_PORT` dans `.env`, puis `docker compose up -d`.
+
+**`docker compose ps` reste "unhealthy"**
+→ `docker compose logs portal` : vérifier que `N8N_HOST`/`N8N_API_KEY` sont
+bien renseignés dans `.env` (le serveur démarre mais l'app peut logger des
+erreurs si les webhooks n8n sont injoignables — le healthcheck teste
+seulement que le serveur HTTP répond, pas que n8n est accessible).
