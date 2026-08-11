@@ -177,7 +177,13 @@ function extractFormMetaData(executions: N8nExecution[]): FormMetaData {
 
   const url = (source?.["url-source"] as string | undefined) ?? null;
   const fileName = binary?.fileName ?? null;
-  const size = binary?.fileSize != null ? Number(binary.fileSize) : null;
+  // bytes is the raw, exact byte count. fileSize is a human-formatted
+  // string ("614 kB") — Number() on that silently yields NaN, which is
+  // exactly why size used to come back null despite a file having been
+  // sent. Only fall back to fileSize if bytes is absent (older/different
+  // n8n binary storage mode) and it happens to already be numeric.
+  const rawSize = binary?.bytes ?? binary?.fileSize;
+  const size = rawSize != null ? Number(rawSize) : null;
 
   return {
     type: binary ? "pdf" : url ? "url" : null,

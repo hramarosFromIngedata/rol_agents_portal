@@ -6,7 +6,10 @@ export type N8nNode = {
 
 export type N8nRunItem = {
   json?: Record<string, unknown>;
-  binary?: Record<string, { fileName?: string; fileSize?: string | number; mimeType?: string }>;
+  // fileSize is a human-formatted string (e.g. "614 kB"), NOT a byte count
+  // — use bytes (the raw, exact count n8n stores alongside it) for anything
+  // that needs an actual number.
+  binary?: Record<string, { fileName?: string; fileSize?: string | number; bytes?: number; mimeType?: string }>;
 };
 
 export type N8nRunEntry = {
