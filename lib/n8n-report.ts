@@ -47,6 +47,18 @@ export type ExecutionReport = {
   status_message: string;
   startedAt: string | null;
   stoppedAt: string | null;
+  // n8n's own execution duration (stoppedAt - startedAt), computed
+  // server-side from n8n's timestamps rather than trusted from the client's
+  // local chrono — stays correct no matter when/how often the report is
+  // (re)requested.
+  autoProcessingDurationMs: number | null;
+  // Neither of these has any source on the n8n side — only the browser
+  // knows how long a human spent reviewing, and whether they had to fix
+  // anything. Always null from buildExecutionReport; only ever populated by
+  // applyManualCorrection, once the operator answers the manual-correction
+  // prompt after a successful run.
+  manualProcessingDurationMs: number | null;
+  manuallyCorrected: boolean | null;
   formMetaData: FormMetaData;
   ocrAgent: OcrAgentReport;
   aiAgent: AiAgentReport;
@@ -98,6 +110,34 @@ function findFieldAnywhere(
     }
   }
   return null;
+}
+
+function computeAutoProcessingDurationMs(root: N8nExecution): number | null {
+  if (!root.startedAt || !root.stoppedAt) return null;
+  const started = Date.parse(root.startedAt);
+  const stopped = Date.parse(root.stoppedAt);
+  if (!Number.isFinite(started) || !Number.isFinite(stopped) || stopped < started) return null;
+  return stopped - started;
+}
+
+export type ManualCorrectionInput = {
+  manualProcessingDurationMs: number;
+  manuallyCorrected: boolean;
+};
+
+// Merges client-supplied manual-review data into an otherwise
+// server-computed report. Called from the report route's POST handler,
+// separately from (and after) buildExecutionReport, since the manual data
+// only exists once a human has actually finished reviewing.
+export function applyManualCorrection(
+  report: ExecutionReport,
+  manual: ManualCorrectionInput
+): ExecutionReport {
+  return {
+    ...report,
+    manualProcessingDurationMs: manual.manualProcessingDurationMs,
+    manuallyCorrected: manual.manuallyCorrected,
+  };
 }
 
 // n8n's own resultData.error.message already carries the actual failure
@@ -327,6 +367,9 @@ export async function buildExecutionReport(
       : (extractErrorMessage(root) ?? "Erreur inconnue"),
     startedAt: root.startedAt ?? null,
     stoppedAt: root.stoppedAt ?? null,
+    autoProcessingDurationMs: computeAutoProcessingDurationMs(root),
+    manualProcessingDurationMs: null,
+    manuallyCorrected: null,
     formMetaData: extractFormMetaData(executions),
     ocrAgent: ocrUsage
       ? { model: ocrUsage.model, pagesProcessed: ocrUsage.pagesProcessed, price: ocrPrice }

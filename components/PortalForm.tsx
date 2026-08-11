@@ -32,7 +32,9 @@ const FAILURE_MESSAGES: Record<string, string> = {
   crashed: "Le traitement s'est interrompu de façon inattendue.",
 };
 
-type SendingState = "idle" | "sending";
+// "manual" is the post-success review phase: n8n finished, and the operator
+// is now reviewing/fixing the output by hand before validating.
+type SendingState = "idle" | "sending" | "manual";
 
 type Touched = {
   langue: boolean;
@@ -82,19 +84,25 @@ export default function PortalForm() {
 
   const [sendingState, setSendingState] = useState<SendingState>("idle");
   const [elapsedMs, setElapsedMs] = useState(0);
+  // Manual review chrono, separate from elapsedMs (the n8n/auto chrono) —
+  // starts the moment n8n succeeds, stops when the operator answers the
+  // manual-correction prompt.
+  const [manualElapsedMs, setManualElapsedMs] = useState(0);
   const [processId, setProcessId] = useState<string | null>(null);
   // Kept separate from processId, which gets cleared to null once
   // processing stops (stopPolling) so the stop button/beforeunload handler
   // know there's nothing left to cancel — this persists for display even
   // after the run has terminated.
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const [runStatus, setRunStatus] = useState<"processing" | "error" | "finished" | null>(null);
+  const [runStatus, setRunStatus] = useState<"processing" | "manual" | "error" | "finished" | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
+  const [manualPromptOpen, setManualPromptOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerStartRef = useRef<number | null>(null);
+  const manualTimerStartRef = useRef<number | null>(null);
 
   const trimmedUrl = urlSource.trim();
   const hasFile = !!file;
@@ -121,16 +129,33 @@ export default function PortalForm() {
 
   const fileInputDisabled = urlProvided;
   const urlInputDisabled = hasFile;
-  const submitDisabled = sendingState === "sending" ? false : !isFormValid;
+  // Enabled whenever there's a non-idle phase to act on (stop the auto run,
+  // or validate the manual review) — the button's meaning switches with
+  // sendingState rather than always re-submitting the form.
+  const submitDisabled = sendingState === "idle" ? !isFormValid : false;
 
-  // Processing timer. The start reference lives in a ref (not state) so the
-  // refresh button can rebase it without tearing down/restarting the interval.
+  // Auto (n8n) processing timer. The start reference lives in a ref (not
+  // state) so it can be rebased without tearing down/restarting the interval.
   useEffect(() => {
     if (sendingState !== "sending") return;
     timerStartRef.current = Date.now();
     const id = setInterval(() => {
       if (timerStartRef.current != null) {
         setElapsedMs(Date.now() - timerStartRef.current);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sendingState]);
+
+  // Manual review timer, starts automatically once n8n succeeds (see
+  // startManualPhase) and stops once the operator answers the
+  // manual-correction prompt.
+  useEffect(() => {
+    if (sendingState !== "manual") return;
+    manualTimerStartRef.current = Date.now();
+    const id = setInterval(() => {
+      if (manualTimerStartRef.current != null) {
+        setManualElapsedMs(Date.now() - manualTimerStartRef.current);
       }
     }, 1000);
     return () => clearInterval(id);
@@ -143,15 +168,17 @@ export default function PortalForm() {
     };
   }, []);
 
-  // Warn before leaving/reloading while a treatment is in flight, and if the
-  // user actually leaves, cancel it server-side rather than letting it run
+  // Warn before leaving/reloading while a treatment is in flight — either
+  // n8n is still running, or the operator hasn't answered the
+  // manual-correction prompt yet — and if the user actually leaves during
+  // the n8n phase, cancel it server-side rather than letting it run
   // unattended. unload only fires once beforeunload's prompt is accepted (or
   // isn't shown), so a cancelled reload never triggers the stop call.
   // sendBeacon (not fetch) is used because regular requests can get aborted
   // mid-flight once the page starts tearing down.
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
-      if (sendingState !== "sending") return;
+      if (sendingState === "idle") return;
       e.preventDefault();
       e.returnValue = "";
     }
@@ -194,6 +221,7 @@ export default function PortalForm() {
   }, []);
 
   const { hours, minutes, seconds } = formatTime(elapsedMs);
+  const manualTime = formatTime(manualElapsedMs);
 
   function markTouched(key: keyof Touched) {
     setTouched((t) => (t[key] ? t : { ...t, [key]: true }));
@@ -270,9 +298,46 @@ export default function PortalForm() {
 
   function stopSending() {
     // Stops the timer but deliberately leaves the elapsed value on screen
-    // (success and error included) — it only resets via the refresh button
-    // or the next "Traiter" launch.
+    // (success and error included) — it only resets on the next "Traiter"
+    // launch.
     setSendingState("idle");
+  }
+
+  // Entered automatically once n8n succeeds (see the "success" branch in
+  // startPolling) — starts the second, manual-review chrono and swaps the
+  // submit button into "Valider le traitement manuel" until the operator
+  // answers the manual-correction prompt.
+  function startManualPhase() {
+    manualTimerStartRef.current = Date.now();
+    setManualElapsedMs(0);
+    setRunStatus("manual");
+    setSendingState("manual");
+  }
+
+  // Called once the operator answers "avez-vous eu besoin de corriger
+  // manuellement ?". Stops the manual chrono, returns the button to
+  // "Traiter", and sends the manual timing/answer to the report route —
+  // the only place this data can come from, since n8n has no notion of it.
+  function finalizeManualPhase(manuallyCorrected: boolean) {
+    setManualPromptOpen(false);
+    const manualProcessingDurationMs = manualElapsedMs;
+    setRunStatus("finished");
+    setStatusMessage(
+      manuallyCorrected
+        ? "Traitement manuel terminé (correction effectuée)."
+        : "Traitement manuel terminé (aucune correction nécessaire)."
+    );
+    setSendingState("idle");
+
+    const eid = executionId;
+    if (!eid) return;
+    fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(eid)}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manualProcessingDurationMs, manuallyCorrected }),
+    }).catch((err) => {
+      console.error(`[n8n] Échec de l'envoi des données de correction manuelle pour l'exécution ${eid} :`, err);
+    });
   }
 
   function stopPolling() {
@@ -329,11 +394,10 @@ export default function PortalForm() {
 
         if (st === "success") {
           stopPolling();
-          stopSending();
-          setRunStatus("finished");
           setStatusMessage("executed successfully");
           resetUrlAndFile();
           fetchReport(pid);
+          startManualPhase();
           return;
         }
 
@@ -377,7 +441,11 @@ export default function PortalForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (sendingState === "sending") return;
+    // Covers both "sending" and "manual" — neither should ever re-submit
+    // the form. Pressing Enter in a text field bypasses the button's own
+    // onClick guard (handleSubmitButtonClick) and calls this directly, so
+    // the guard has to live here too.
+    if (sendingState !== "idle") return;
     if (!isFormValid) return;
 
     const data = new FormData();
@@ -433,9 +501,16 @@ export default function PortalForm() {
   }
 
   function handleSubmitButtonClick(e: React.MouseEvent<HTMLButtonElement>) {
-    if (sendingState !== "sending") return;
-    e.preventDefault();
-    setConfirmStep(1);
+    if (sendingState === "sending") {
+      e.preventDefault();
+      setConfirmStep(1);
+      return;
+    }
+    if (sendingState === "manual") {
+      e.preventDefault();
+      setManualPromptOpen(true);
+      return;
+    }
   }
 
   function performStop() {
@@ -464,7 +539,10 @@ export default function PortalForm() {
       });
   }
 
-  const controlsDisabled = sendingState === "sending";
+  // Form stays frozen through both the auto run and the manual review — url
+  // and file were already cleared by resetUrlAndFile on success, so there's
+  // nothing to edit until the operator validates the manual review anyway.
+  const controlsDisabled = sendingState !== "idle";
 
   return (
     <>
@@ -483,7 +561,12 @@ export default function PortalForm() {
           <div className="mt-3 space-y-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
             <p className="text-sm"><u><strong>id d&apos;exécution:</strong></u> {executionId ?? "—"}</p>
             <p className="text-sm">
-              <u><strong>Temps de traitement:</strong></u> {hours} heures : {minutes} minutes : {seconds} secondes
+              <u><strong>Temps de traitement N8N:</strong></u> {hours} heures : {minutes} minutes : {seconds}{" "}
+              secondes
+            </p>
+            <p className="text-sm">
+              <u><strong>Temps de traitement Manuel:</strong></u> {manualTime.hours} heures : {manualTime.minutes}{" "}
+              minutes : {manualTime.seconds} secondes
             </p>
             <p className="text-sm"><u><strong>status:</strong></u> {runStatus ?? "—"}</p>
             <p className="text-sm"><u><strong>status_message:</strong></u> {statusMessage ?? "—"}</p>
@@ -714,8 +797,12 @@ export default function PortalForm() {
                     </svg>
                   </span>
                 )}
-                <span className={sendingState === "sending" ? "opacity-90" : ""}>
-                  {sendingState === "sending" ? "Annuler" : "Traiter"}
+                <span className={sendingState !== "idle" ? "opacity-90" : ""}>
+                  {sendingState === "sending"
+                    ? "Annuler"
+                    : sendingState === "manual"
+                      ? "Valider le traitement manuel"
+                      : "Traiter"}
                 </span>
               </button>
             </form>
@@ -743,6 +830,15 @@ export default function PortalForm() {
           performStop();
         }}
         onCancel={() => setConfirmStep(0)}
+      />
+      <ConfirmDialog
+        open={manualPromptOpen}
+        title="Correction manuelle"
+        message="Avez-vous eu besoin de corriger manuellement ?"
+        confirmLabel="Oui"
+        cancelLabel="Non"
+        onConfirm={() => finalizeManualPhase(true)}
+        onCancel={() => finalizeManualPhase(false)}
       />
     </>
   );
