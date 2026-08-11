@@ -290,6 +290,11 @@ export default function PortalForm() {
   function startSending() {
     timerStartRef.current = Date.now();
     setElapsedMs(0);
+    // Manual chrono too — otherwise a new "Traiter" click still shows the
+    // previous run's manual review duration until (if ever) a new manual
+    // phase actually starts.
+    manualTimerStartRef.current = null;
+    setManualElapsedMs(0);
     setExecutionId(null);
     setRunStatus("processing");
     setStatusMessage(null);
