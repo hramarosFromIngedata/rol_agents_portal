@@ -64,6 +64,25 @@ function fieldClass(invalid: boolean, extra = "") {
   ].join(" ");
 }
 
+// Light, low-saturation tint per status — enough to catch the eye without
+// straining it, distinct from the vivid blue accents used elsewhere so the
+// two never compete for attention.
+function statusBoxClass(status: "processing" | "manual" | "error" | "finished" | null): string {
+  switch (status) {
+    // "processing" stays neutral — it's the expected default while
+    // waiting, not something that needs to grab attention, and a blue
+    // tint would be invisible against the page's own blue anyway.
+    case "manual":
+      return "bg-amber-400/30 border-amber-300/50";
+    case "error":
+      return "bg-red-500/45 border-red-400/60";
+    case "finished":
+      return "bg-emerald-400/30 border-emerald-300/50";
+    default:
+      return "bg-white/10 border-white/20";
+  }
+}
+
 export default function PortalForm() {
   const [urlSource, setUrlSource] = useState("");
   const [langue, setLangue] = useState("");
@@ -574,7 +593,9 @@ export default function PortalForm() {
             ROL - Portail N8N
           </h1>
 
-          <div className="mt-3 space-y-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl">
+          <div
+            className={`mt-3 space-y-1 rounded-2xl border px-5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-colors duration-500 ${statusBoxClass(runStatus)}`}
+          >
             <p className="text-sm"><u><strong>id d&apos;exécution:</strong></u> {executionId ?? "—"}</p>
             <p className="text-sm">
               <u><strong>Temps de traitement N8N:</strong></u> {hours} heures : {minutes} minutes : {seconds}{" "}
