@@ -320,7 +320,13 @@ export default function PortalForm() {
   // the only place this data can come from, since n8n has no notion of it.
   function finalizeManualPhase(manuallyCorrected: boolean) {
     setManualPromptOpen(false);
-    const manualProcessingDurationMs = manualElapsedMs;
+    // Read from the ref (exact instant startManualPhase actually started)
+    // and take "now" as the stop instant, rather than the displayed
+    // manualElapsedMs — that value is only refreshed once a second by the
+    // display interval, so it can lag the real answer instant by up to 1s.
+    const manualStartedAt =
+      manualTimerStartRef.current != null ? new Date(manualTimerStartRef.current).toISOString() : null;
+    const manualStoppedAt = new Date().toISOString();
     setRunStatus("finished");
     setStatusMessage(
       manuallyCorrected
@@ -330,11 +336,11 @@ export default function PortalForm() {
     setSendingState("idle");
 
     const eid = executionId;
-    if (!eid) return;
+    if (!eid || !manualStartedAt) return;
     fetch(`${BASE_PATH}/api/executions/${encodeURIComponent(eid)}/report`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ manualProcessingDurationMs, manuallyCorrected }),
+      body: JSON.stringify({ manualStartedAt, manualStoppedAt, manuallyCorrected }),
     }).catch((err) => {
       console.error(`[n8n] Échec de l'envoi des données de correction manuelle pour l'exécution ${eid} :`, err);
     });
@@ -348,11 +354,14 @@ export default function PortalForm() {
     setProcessId(null);
   }
 
-  // Triggers report construction + storage to the sheet (see
-  // app/api/executions/[id]/report/route.ts) for both terminal outcomes,
-  // success and failure, so failed runs are tracked too. Returns the report
-  // (or null on failure) so callers that need status_message can await it;
-  // callers that only care about the storage side effect can call it
+  // Triggers report construction + storage to the sheet (GET, see
+  // app/api/executions/[id]/report/route.ts) — used for FAILED runs only.
+  // A successful run's report/storage happens exactly once, later, via the
+  // POST call in finalizeManualPhase (once manual-review data is known) —
+  // calling this here too would store that execution twice, once
+  // prematurely with manual fields still null. Returns the report (or null
+  // on failure) so callers that need status_message can await it; callers
+  // that only care about the storage side effect can call it
   // fire-and-forget.
   async function fetchReport(pid: string): Promise<{ status_message?: string } | null> {
     try {
@@ -396,7 +405,9 @@ export default function PortalForm() {
           stopPolling();
           setStatusMessage("executed successfully");
           resetUrlAndFile();
-          fetchReport(pid);
+          // No fetchReport(pid) here on purpose: the report for a
+          // successful run is only ever fetched/stored once, later, from
+          // finalizeManualPhase's POST — see the comment on fetchReport.
           startManualPhase();
           return;
         }

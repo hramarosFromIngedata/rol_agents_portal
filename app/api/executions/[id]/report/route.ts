@@ -33,6 +33,13 @@ async function resolveReport(
   return { ok: true, host, report };
 }
 
+// Used for FAILED runs only: PortalForm calls this once a run ends in
+// error/canceled/crashed, and this is that execution's one and only store
+// call — there's no manual-review phase to wait for on a failed run. For
+// SUCCESSFUL runs, PortalForm does NOT call this: it waits for POST below
+// instead, so a successful execution is only ever stored once, already
+// carrying its manual-review data, rather than once prematurely (with
+// manual fields still null) and once again after.
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -48,15 +55,13 @@ export async function GET(
   return NextResponse.json(resolved.report);
 }
 
-// Called once the operator answers the manual-correction prompt (see
-// finalizeManualPhase in PortalForm.tsx), after GET above has already
-// stored a first snapshot with manualProcessingDurationMs/manuallyCorrected
-// still null. n8n has no notion of manual review time — only the browser
-// measured it — so it can only ever be attached here, after the fact.
-// Rebuilds the report fresh (n8n data isn't cached) and merges the
-// client-supplied manual fields in before storing a second time. Whether
-// the sheet ends up with two rows or one updated row per execution depends
-// entirely on the rol-store-meta-data n8n workflow, outside this repo.
+// Used for SUCCESSFUL runs: called once the operator answers the
+// manual-correction prompt (see finalizeManualPhase in PortalForm.tsx) —
+// the one and only store call for that execution. n8n has no notion of
+// manual review time — only the browser measured it — so it can only ever
+// be attached here, after the fact. Rebuilds the report fresh (n8n data
+// isn't cached) and merges the client-supplied manual timestamps/answer in
+// before storing.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,11 +75,19 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const manualProcessingDurationMs = (body as Record<string, unknown> | null)?.manualProcessingDurationMs;
+  const manualStartedAt = (body as Record<string, unknown> | null)?.manualStartedAt;
+  const manualStoppedAt = (body as Record<string, unknown> | null)?.manualStoppedAt;
   const manuallyCorrected = (body as Record<string, unknown> | null)?.manuallyCorrected;
-  if (typeof manualProcessingDurationMs !== "number" || typeof manuallyCorrected !== "boolean") {
+  if (
+    typeof manualStartedAt !== "string" ||
+    typeof manualStoppedAt !== "string" ||
+    typeof manuallyCorrected !== "boolean"
+  ) {
     return NextResponse.json(
-      { error: "manualProcessingDurationMs (number) and manuallyCorrected (boolean) are required." },
+      {
+        error:
+          "manualStartedAt (string), manualStoppedAt (string) and manuallyCorrected (boolean) are required.",
+      },
       { status: 400 }
     );
   }
@@ -82,7 +95,7 @@ export async function POST(
   const resolved = await resolveReport(id);
   if (!resolved.ok) return resolved.response;
 
-  const report = applyManualCorrection(resolved.report, { manualProcessingDurationMs, manuallyCorrected });
+  const report = applyManualCorrection(resolved.report, { manualStartedAt, manualStoppedAt, manuallyCorrected });
 
   postJsonWithRetry(webhookUrl(resolved.host, "rolStoreMetaData"), report, "rol-store-meta-data:" + id + ":manual");
 

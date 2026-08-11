@@ -45,18 +45,19 @@ export type ExecutionReport = {
   workflowId: string | null;
   status: "success" | "error";
   status_message: string;
-  startedAt: string | null;
-  stoppedAt: string | null;
-  // n8n's own execution duration (stoppedAt - startedAt), computed
-  // server-side from n8n's timestamps rather than trusted from the client's
-  // local chrono — stays correct no matter when/how often the report is
-  // (re)requested.
+  // n8n's own timestamps for the automated run, computed server-side
+  // rather than trusted from the client's local chrono — stays correct no
+  // matter when/how often the report is (re)requested.
+  autoStartedAt: string | null;
+  autoStoppedAt: string | null;
   autoProcessingDurationMs: number | null;
-  // Neither of these has any source on the n8n side — only the browser
-  // knows how long a human spent reviewing, and whether they had to fix
-  // anything. Always null from buildExecutionReport; only ever populated by
-  // applyManualCorrection, once the operator answers the manual-correction
-  // prompt after a successful run.
+  // None of these three has any source on the n8n side — only the browser
+  // knows when a human started/finished reviewing, and whether they had to
+  // fix anything. Always null from buildExecutionReport; only ever
+  // populated by applyManualCorrection, once the operator answers the
+  // manual-correction prompt after a successful run.
+  manualStartedAt: string | null;
+  manualStoppedAt: string | null;
   manualProcessingDurationMs: number | null;
   manuallyCorrected: boolean | null;
   formMetaData: FormMetaData;
@@ -112,16 +113,20 @@ function findFieldAnywhere(
   return null;
 }
 
-function computeAutoProcessingDurationMs(root: N8nExecution): number | null {
-  if (!root.startedAt || !root.stoppedAt) return null;
-  const started = Date.parse(root.startedAt);
-  const stopped = Date.parse(root.stoppedAt);
+// Shared by both phases: auto duration is startedAt/stoppedAt from n8n,
+// manual duration is the same computation applied to the client-supplied
+// manual-review timestamps — one formula, one source of truth per phase.
+function computeDurationMs(startedAt: string | null, stoppedAt: string | null): number | null {
+  if (!startedAt || !stoppedAt) return null;
+  const started = Date.parse(startedAt);
+  const stopped = Date.parse(stoppedAt);
   if (!Number.isFinite(started) || !Number.isFinite(stopped) || stopped < started) return null;
   return stopped - started;
 }
 
 export type ManualCorrectionInput = {
-  manualProcessingDurationMs: number;
+  manualStartedAt: string;
+  manualStoppedAt: string;
   manuallyCorrected: boolean;
 };
 
@@ -135,7 +140,9 @@ export function applyManualCorrection(
 ): ExecutionReport {
   return {
     ...report,
-    manualProcessingDurationMs: manual.manualProcessingDurationMs,
+    manualStartedAt: manual.manualStartedAt,
+    manualStoppedAt: manual.manualStoppedAt,
+    manualProcessingDurationMs: computeDurationMs(manual.manualStartedAt, manual.manualStoppedAt),
     manuallyCorrected: manual.manuallyCorrected,
   };
 }
@@ -365,9 +372,11 @@ export async function buildExecutionReport(
     status_message: isSuccess
       ? "executed successfully"
       : (extractErrorMessage(root) ?? "Erreur inconnue"),
-    startedAt: root.startedAt ?? null,
-    stoppedAt: root.stoppedAt ?? null,
-    autoProcessingDurationMs: computeAutoProcessingDurationMs(root),
+    autoStartedAt: root.startedAt ?? null,
+    autoStoppedAt: root.stoppedAt ?? null,
+    autoProcessingDurationMs: computeDurationMs(root.startedAt ?? null, root.stoppedAt ?? null),
+    manualStartedAt: null,
+    manualStoppedAt: null,
     manualProcessingDurationMs: null,
     manuallyCorrected: null,
     formMetaData: extractFormMetaData(executions),
